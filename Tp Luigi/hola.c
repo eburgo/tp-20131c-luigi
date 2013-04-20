@@ -9,7 +9,6 @@ int main() {
 	}
 	
 	printf("El numero es:%d\n",j);
-	printf("Nico es un puto");
 	
 	return 0;
 }
