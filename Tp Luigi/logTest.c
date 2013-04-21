@@ -23,7 +23,7 @@ static void log_in_disk() {
     log_destroy(logger);
 }
 
-int main(int argc, char** argv) {
+int mainTest(int argc, char** argv) {
     pthread_t th1, th2;
 
     pthread_create(&th1, NULL, (void*) log_in_disk, NULL);
