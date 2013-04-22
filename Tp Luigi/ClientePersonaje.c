@@ -30,6 +30,7 @@ int main() {
 	strcpy(personaje->nombre,nombre);
 
 	puts(personaje->nombre);
+	puts("Test");
 
 	return 0;
 }
