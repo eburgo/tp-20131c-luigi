@@ -26,7 +26,6 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	// Hacer que el SO libere el puerto inmediatamente luego de cerrar el socket.
 	setsockopt(socketEscucha, SOL_SOCKET, SO_REUSEADDR, &optval,
 			sizeof(optval));
 
@@ -34,7 +33,6 @@ int main() {
 	socketInfo.sin_addr.s_addr = DIRECCION; //Notar que aca no se usa inet_addr()
 	socketInfo.sin_port = htons(PUERTO);
 
-// Vincular el socket con una direccion de red almacenada en 'socketInfo'.
 	if (bind(socketEscucha, (struct sockaddr*) &socketInfo, sizeof(socketInfo))
 			!= 0) {
 
@@ -42,7 +40,6 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-// Escuchar nuevas conexiones entrantes.
 	if (listen(socketEscucha, 10) != 0) {
 
 		perror("Error al poner a escuchar socket");
@@ -52,7 +49,6 @@ int main() {
 
 	printf("Escuchando conexiones entrantes.\n");
 
-// Aceptar una nueva conexion entrante. Se genera un nuevo socket con la nueva conexion.
 	if ((socketNuevaConexion = accept(socketEscucha, NULL, 0)) < 0) {
 
 		perror("Error al aceptar conexion entrante");
@@ -62,7 +58,6 @@ int main() {
 
 	while (1) {
 
-		// Recibir hasta BUFF_SIZE datos y almacenarlos en 'buffer'.
 		if ((nbytesRecibidos = recv(socketNuevaConexion, buffer, BUFF_SIZE, 0))
 				> 0) {
 
