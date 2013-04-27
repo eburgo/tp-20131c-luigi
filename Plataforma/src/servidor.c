@@ -8,6 +8,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <commons/log.h>
+#include <commons/collections/queue.h>
 
 #define DIRECCION INADDR_ANY   //INADDR_ANY representa la direccion de cualquier
 //interfaz conectada con la computadora
@@ -64,9 +65,10 @@ int main() {
 	printf("Escuchando conexiones entrantes.\n");
 
 // Aceptar una nueva conexion entrante. Se genera un nuevo socket con la nueva conexion.
-	pthread_t thread[3];
-	int j=0;
+	pthread_t *thread;
+	t_queue *colaHilos = queue_create();
 	while (1) {
+		thread = malloc(sizeof(pthread_t));
 		socketNuevaConexion = malloc(sizeof(int));
 		if ((*socketNuevaConexion = accept(socketEscucha, NULL, 0)) < 0) {
 
@@ -75,15 +77,16 @@ int main() {
 
 		}
 
-		pthread_create(&thread[j], NULL, (void*) manejarConexion,
+		pthread_create(thread, NULL, (void*) manejarConexion,
 				socketNuevaConexion);
-		j++;
+		queue_push(colaHilos,thread);
 	}
 
-
-	pthread_join(thread[1], NULL );
-	pthread_join(thread[2], NULL );
-	pthread_join(thread[3], NULL );
+	//pthread_t *threadASacar;
+	while(queue_is_empty(colaHilos)) {
+		//threadASacar = queue_pop(colaHilos);
+		pthread_join((pthread_t)queue_peek(colaHilos),NULL);
+	}
 
 	close(socketEscucha);
 
@@ -107,6 +110,7 @@ void manejarConexion(int* socket) {
 
 				printf("Server cerrado correctamente.\n");
 				close(*socket);
+				free(*socket);
 				break;
 
 			}
