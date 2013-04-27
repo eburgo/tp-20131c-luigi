@@ -18,7 +18,8 @@ void manejarConexion(int* socket);
 
 int main() {
 
-	int socketEscucha, socketNuevaConexion;
+	int socketEscucha;
+	int *socketNuevaConexion;
 
 	struct sockaddr_in socketInfo;
 
@@ -66,7 +67,8 @@ int main() {
 	pthread_t thread[3];
 	int j=0;
 	while (1) {
-		if ((socketNuevaConexion = accept(socketEscucha, NULL, 0)) < 0) {
+		socketNuevaConexion = malloc(sizeof(int));
+		if ((*socketNuevaConexion = accept(socketEscucha, NULL, 0)) < 0) {
 
 			perror("Error al aceptar conexion entrante");
 			return EXIT_FAILURE;
@@ -74,14 +76,14 @@ int main() {
 		}
 
 		pthread_create(&thread[j], NULL, (void*) manejarConexion,
-				&socketNuevaConexion);
+				socketNuevaConexion);
 		j++;
 	}
 
-	int i;
-	for (i = 0; i < 3; i++) {
-		pthread_join(thread[i], NULL );
-	}
+
+	pthread_join(thread[1], NULL );
+	pthread_join(thread[2], NULL );
+	pthread_join(thread[3], NULL );
 
 	close(socketEscucha);
 
