@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <commons/log.h>
 #include <commons/collections/queue.h>
+#include <commons/socket.h>
 
 #define DIRECCION INADDR_ANY   //INADDR_ANY representa la direccion de cualquier
 //interfaz conectada con la computadora
@@ -24,45 +25,7 @@ int main() {
 	pthread_t *thread;
 	t_queue *colaHilos = queue_create();
 
-	struct sockaddr_in socketInfo;
-
-	int optval = 1;
-
-	// Crear un socket:
-	// AF_INET: Socket de internet IPv4
-	// SOCK_STREAM: Orientado a la conexion, TCP
-	// 0: Usar protocolo por defecto para AF_INET-SOCK_STREAM: Protocolo TCP/IPv4
-	if ((socketEscucha = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("socket");
-		return EXIT_FAILURE;
-	}
-
-	// Hacer que el SO libere el puerto inmediatamente luego de cerrar el socket.
-	setsockopt(socketEscucha, SOL_SOCKET, SO_REUSEADDR, &optval,
-			sizeof(optval));
-
-	socketInfo.sin_family = AF_INET;
-	socketInfo.sin_addr.s_addr = DIRECCION; //Notar que aca no se usa inet_addr()
-	socketInfo.sin_port = htons(PUERTO);
-
-// Vincular el socket con una direccion de red almacenada en 'socketInfo'.
-	if (bind(socketEscucha, (struct sockaddr*) &socketInfo, sizeof(socketInfo))
-			!= 0) {
-
-		perror("Error al bindear socket escucha");
-		return EXIT_FAILURE;
-	}
-
-	//pthread_t* thread= malloc(sizeof(pthread_t)*5);
-
-// Escuchar nuevas conexiones entrantes.
-
-	if (listen(socketEscucha, 10) != 0) {
-
-		perror("Error al poner a escuchar socket");
-		return EXIT_FAILURE;
-
-	}
+	socketEscucha = iniciarServidor(PUERTO);
 
 	printf("Escuchando conexiones entrantes.\n");
 
