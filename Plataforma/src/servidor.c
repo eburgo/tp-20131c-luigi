@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 #include <commons/log.h>
 #include <commons/collections/queue.h>
 
@@ -18,9 +19,10 @@
 void manejarConexion(int* socket);
 
 int main() {
-
 	int socketEscucha;
 	int *socketNuevaConexion;
+	pthread_t *thread;
+	t_queue *colaHilos = queue_create();
 
 	struct sockaddr_in socketInfo;
 
@@ -65,8 +67,6 @@ int main() {
 	printf("Escuchando conexiones entrantes.\n");
 
 // Aceptar una nueva conexion entrante. Se genera un nuevo socket con la nueva conexion.
-	pthread_t *thread;
-	t_queue *colaHilos = queue_create();
 	while (1) {
 		thread = malloc(sizeof(pthread_t));
 		socketNuevaConexion = malloc(sizeof(int));
@@ -79,13 +79,11 @@ int main() {
 
 		pthread_create(thread, NULL, (void*) manejarConexion,
 				socketNuevaConexion);
-		queue_push(colaHilos,thread);
+		queue_push(colaHilos, thread);
 	}
 
-	//pthread_t *threadASacar;
-	while(queue_is_empty(colaHilos)) {
-		//threadASacar = queue_pop(colaHilos);
-		pthread_join((pthread_t)queue_peek(colaHilos),NULL);
+	while (queue_is_empty(colaHilos)) {
+		pthread_join((pthread_t) queue_pop(colaHilos), NULL );
 	}
 
 	close(socketEscucha);
@@ -105,14 +103,14 @@ void manejarConexion(int* socket) {
 			printf("\n");
 			printf("Tamanio del buffer %d bytes!\n", nbytesRecibidos);
 			fflush(stdout);
-
-			if (memcmp(buffer, "fin", nbytesRecibidos) == 0) {
-
-				printf("Server cerrado correctamente.\n");
-				close(*socket);
-				free(*socket);
-				break;
-
+			if (nbytesRecibidos == 3) {
+				if (memcmp(buffer, "fin", nbytesRecibidos) == 0) {
+					printf("El cliente %d se desconecto correctamente.\n",
+							*socket);
+					close(*socket);
+					free(socket);
+					break;
+				}
 			}
 
 		} else {
