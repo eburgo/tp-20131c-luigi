@@ -7,7 +7,10 @@
 
 //Estructuras
 
-typedef char* Nivel;
+typedef struct nivel {
+	char *nombre;
+	char *objetos;
+} __attribute__((__packed__)) Nivel;
 
 typedef struct personaje {
 	char *nombre;
@@ -23,4 +26,4 @@ typedef struct personaje {
 // ------------ FUNCIONES -------------
 //Devuelve un personaje a partir de la ruta de un archivo de
 //configuracion.
-Personaje levantarConfiguracion(char *rutaArchivo);
+Personaje* levantarConfiguracion(char *rutaArchivo);
