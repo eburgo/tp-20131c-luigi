@@ -2,18 +2,17 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "commons/config.h"
+#include <commons/collections/queue.h>
+#include <commons/config.h>
 
 //Estructuras
 
-typedef struct nivel {
-	char *nivel;
-} Nivel;
+typedef char* Nivel;
 
 typedef struct personaje {
 	char *nombre;
 	char *simbolo;
-	Nivel *niveles;
+	t_queue *listaNiveles;
 	int vidas;
 	char *ip;
 	char *puerto;
