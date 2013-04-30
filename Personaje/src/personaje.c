@@ -19,7 +19,7 @@ void enviaDatos(int* socket);
 char buffer[BUFF_SIZE];
 int nbytesRecibidos;
 
-int main() {
+int mainn() {
 
 	int unSocket;
 

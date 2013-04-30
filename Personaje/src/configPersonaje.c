@@ -25,13 +25,12 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 			char nivelABuscar[20] = "obj[";
 			strcat(nivelABuscar, nombreNivel);
 			strcat(nivelABuscar, "]");
-			char *objetosNivel = config_get_string_value(config,nivelABuscar);
+			char *objetosNivel = config_get_string_value(config, nivelABuscar);
 			nivelAAgregar->nombre = nombreNivel;
 			nivelAAgregar->objetos = objetosNivel;
-			queue_push(personaje->listaNiveles,nivelAAgregar);
+			queue_push(personaje->listaNiveles, nivelAAgregar);
 			t_list *lista = list_create();
-			list_add(lista,nivelAAgregar);
-			free(niveles);
+			list_add(lista, nivelAAgregar);
 		}
 	}
 	//La funcion strtok sirve para separar strings, aca la usamos para
@@ -42,10 +41,32 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 
 	return personaje;
 }
+/*
+ * Devuelve la cantidad de vidas despues de sumar
+ */
+int sumarVida(Personaje *pj) {
+	return (pj->vidas = pj->vidas + 1);
+}
+/*
+ * devuelve la cantidad de vidas despues de restar
+ * o -1 si ya no tiene mas vidas
+ */
+int sacarVida(Personaje *pj) {
+	if (pj->vidas > 0)
+		return (pj->vidas = pj->vidas - 1);
+	return (-1);
+}
+/*
+ * devuelve -1 si ya no tiene mas niveles
+ * o 0 si se devolio el nivel
+ */
+Nivel* proximoNivel(Personaje *pj) {
+	return (queue_pop(pj->listaNiveles));
+}
 
 //Este main esta para probarlo, despues hay que borrarlo porque se usa desde el personaje.
-int main(){
-	Nivel *nivel;
+int main() {
+	Nivel *nivel = malloc(sizeof(Nivel));
 	Personaje *personaje = levantarConfiguracion(
 			"/home/utnso/git/tp-20131c-luigi/Personaje/personajeMario.conf");
 	printf("Personaje cargado correctamente!\n");
@@ -55,10 +76,11 @@ int main(){
 	printf("Puerto:%s\n", personaje->puerto);
 	printf("Simbolo:%s\n", personaje->simbolo);
 	printf("Lista de niveles:\n");
-	while(!queue_is_empty(personaje->listaNiveles)){
-		nivel = (Nivel*)queue_pop(personaje->listaNiveles);
-		printf("-- Nivel:%s\n",nivel->nombre);
-		printf("---- > Objetivos:%s\n",nivel->objetos);
+	while ((nivel = proximoNivel(personaje)) != NULL ) {
+		printf("-- Nivel:%s\n", nivel->nombre);
+		printf("---- > Objetivos:%s\n", nivel->objetos);
 	}
+	puts("no hay mas nivels :(");
+
 	return 0;
 }

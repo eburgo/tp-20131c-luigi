@@ -5,7 +5,6 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 	nivel = malloc(sizeof(Nivel));
 	nivel->cajas = queue_create();
 	Caja *cajaNivel;
-	cajaNivel = malloc(sizeof(Caja));
 	t_config *config = config_create(rutaArchivo);
 	nivel->nombre = config_get_string_value(config, "Nombre");
 	nivel->recovery = config_get_int_value(config, "Recovery");
@@ -15,6 +14,8 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 	int masCajas = 1;
 	int i = 1;
 	while (masCajas) {
+
+		cajaNivel = malloc(sizeof(Caja));
 		//Armamos el string de la caja
 		//que vamos a buscar
 		char c[2];

@@ -27,3 +27,17 @@ typedef struct personaje {
 //Devuelve un personaje a partir de la ruta de un archivo de
 //configuracion.
 Personaje* levantarConfiguracion(char *rutaArchivo);
+/*
+ * Devuelve la cantidad de vidas despues de sumar
+ */
+int sumarVida(Personaje *pj);
+/*
+ * devuelve la cantidad de vidas despues de restar
+ * o -1 si ya no tiene mas vidas
+ */
+int sacarVida(Personaje *pj);
+/*
+ * devuelve -1 si ya no tiene mas niveles
+ * o 0 si se devolvio correctamente
+ */
+Nivel* proximoNivel(Personaje *pj);
