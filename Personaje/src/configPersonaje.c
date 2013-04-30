@@ -31,6 +31,7 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 			queue_push(personaje->listaNiveles,nivelAAgregar);
 			t_list *lista = list_create();
 			list_add(lista,nivelAAgregar);
+			free(niveles);
 		}
 	}
 	//La funcion strtok sirve para separar strings, aca la usamos para
@@ -43,7 +44,7 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 }
 
 //Este main esta para probarlo, despues hay que borrarlo porque se usa desde el personaje.
-int mainTest() {
+int main(){
 	Nivel *nivel;
 	Personaje *personaje = levantarConfiguracion(
 			"/home/utnso/git/tp-20131c-luigi/Personaje/personajeMario.conf");
