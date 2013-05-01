@@ -15,16 +15,5 @@ typedef struct nivel {
 	int recovery;
 
 } __attribute__((__packed__)) Nivel;
-/*
-typedef struct caja {
-	char *nombre;
-	char *nombreObjeto;
-	char *simboloObjeto;
-	int cantidad;
-	int posX;
-	int posY;
-
-} __attribute__((__packed__)) Caja;;
-*/
 
 Nivel* levantarConfiguracion(char *rutaArchivo);

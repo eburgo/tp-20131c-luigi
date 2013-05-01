@@ -24,15 +24,13 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 		char caja[10] = "Caja";
 		strcat(caja, c);
 		char *datosCaja = config_get_string_value(config, caja);
-
 		if (datosCaja) {
-		//	cajaNivel->nombre = caja;
-		//	itemNivel->nombre =
 			strsep(&datosCaja, ",");
 			itemNivel->id =* strsep(&datosCaja, ",");
 			itemNivel->quantity = atoi(strsep(&datosCaja, ","));
 			itemNivel->posx = atoi(strsep(&datosCaja, ","));
 			itemNivel->posy = atoi(strsep(&datosCaja, ","));
+			itemNivel->item_type = 'C';
 			list_add(nivel->items,itemNivel);
 			free(datosCaja);
 			i++;
@@ -60,17 +58,6 @@ int main() {
 	printf("TiempoChequeoDeadLock:%d\n", nivel->tiempoChequeoDeadLock);
 	printf("Ip:%s\n", nivel->ip);
 	printf("Puerto:%s\n", nivel->puerto);
-	/*while (!queue_is_empty(nivel->items)) {
-		ITEM_NIVEL *item = queue_pop(nivel->items);
-		//printf("--Nombre Caja:%s\n", caja->nombre);
-		printf("--Nombre Objeto:%s\n", item->nombre);
-		printf("--Simbolo:%s\n", item->id);
-		printf("--Cantidad::%d\n", item->quantity);
-		printf("--Pos X:%d\n", item->posx);
-		printf("--Pos Y:%d\n", item->posy);
-		i++;
-	}
-	*/
 	puts("items!: \n");
 	/*paso esa funcion paraIterar que va a recibir como parametro
 	 * nivel->items. Es como cuando pasamos una funcion al pthread_create
@@ -84,6 +71,7 @@ void paraIterar(ITEM_NIVEL* item){
 	printf("id: %c \n", item->id);
 	printf("cantidad: %d \n", item->quantity);
 	printf("posx: %d \n", item->posx);
-	printf("posy: %d \n\n", item->posy);
+	printf("posy: %d \n", item->posy);
+	printf("tipo: %c \n\n",item->item_type);
 
 }
