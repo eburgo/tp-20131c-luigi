@@ -2,19 +2,20 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <commons/collections/queue.h>
+#include <commons/collections/list.h>
 #include <commons/config.h>
+#include <commons/nivel.h>
 
 typedef struct nivel {
 	char *nombre;
-	t_queue *cajas;
+	t_list *items;
 	char *ip;
 	char *puerto;
 	int tiempoChequeoDeadLock;
 	int recovery;
 
 } __attribute__((__packed__)) Nivel;
-
+/*
 typedef struct caja {
 	char *nombre;
 	char *nombreObjeto;
@@ -24,5 +25,6 @@ typedef struct caja {
 	int posY;
 
 } __attribute__((__packed__)) Caja;;
+*/
 
 Nivel* levantarConfiguracion(char *rutaArchivo);

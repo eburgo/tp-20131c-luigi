@@ -1,10 +1,10 @@
 #include "configNivel.h"
-
+void paraIterar(ITEM_NIVEL* item);
 Nivel* levantarConfiguracion(char *rutaArchivo) {
 	Nivel *nivel;
 	nivel = malloc(sizeof(Nivel));
-	nivel->cajas = queue_create();
-	Caja *cajaNivel;
+	nivel->items = list_create();
+	ITEM_NIVEL *itemNivel;
 	t_config *config = config_create(rutaArchivo);
 	nivel->nombre = config_get_string_value(config, "Nombre");
 	nivel->recovery = config_get_int_value(config, "Recovery");
@@ -15,7 +15,7 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 	int i = 1;
 	while (masCajas) {
 
-		cajaNivel = malloc(sizeof(Caja));
+		itemNivel = malloc(sizeof(ITEM_NIVEL));
 		//Armamos el string de la caja
 		//que vamos a buscar
 		char c[2];
@@ -26,13 +26,14 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 		char *datosCaja = config_get_string_value(config, caja);
 
 		if (datosCaja) {
-			cajaNivel->nombre = caja;
-			cajaNivel->nombreObjeto = strsep(&datosCaja, ",");
-			cajaNivel->simboloObjeto = strsep(&datosCaja, ",");
-			cajaNivel->cantidad = atoi(strsep(&datosCaja, ","));
-			cajaNivel->posX = atoi(strsep(&datosCaja, ","));
-			cajaNivel->posY = atoi(strsep(&datosCaja, ","));
-			queue_push(nivel->cajas,cajaNivel);
+		//	cajaNivel->nombre = caja;
+		//	itemNivel->nombre =
+			strsep(&datosCaja, ",");
+			itemNivel->id =* strsep(&datosCaja, ",");
+			itemNivel->quantity = atoi(strsep(&datosCaja, ","));
+			itemNivel->posx = atoi(strsep(&datosCaja, ","));
+			itemNivel->posy = atoi(strsep(&datosCaja, ","));
+			list_add(nivel->items,itemNivel);
 			free(datosCaja);
 			i++;
 		} else {
@@ -59,17 +60,30 @@ int main() {
 	printf("TiempoChequeoDeadLock:%d\n", nivel->tiempoChequeoDeadLock);
 	printf("Ip:%s\n", nivel->ip);
 	printf("Puerto:%s\n", nivel->puerto);
-	int i = 1;
-	while (!queue_is_empty(nivel->cajas)) {
-		Caja *caja = queue_pop(nivel->cajas);
-		printf("--Nombre Caja:%s\n", caja->nombre);
-		printf("--Nombre Objeto:%s\n", caja->nombreObjeto);
-		printf("--Simbolo:%s\n", caja->simboloObjeto);
-		printf("--Cantidad::%d\n", caja->cantidad);
-		printf("--Pos X:%d\n", caja->posX);
-		printf("--Pos Y:%d\n", caja->posY);
+	/*while (!queue_is_empty(nivel->items)) {
+		ITEM_NIVEL *item = queue_pop(nivel->items);
+		//printf("--Nombre Caja:%s\n", caja->nombre);
+		printf("--Nombre Objeto:%s\n", item->nombre);
+		printf("--Simbolo:%s\n", item->id);
+		printf("--Cantidad::%d\n", item->quantity);
+		printf("--Pos X:%d\n", item->posx);
+		printf("--Pos Y:%d\n", item->posy);
 		i++;
 	}
-
+	*/
+	puts("items!: \n");
+	/*paso esa funcion paraIterar que va a recibir como parametro
+	 * nivel->items. Es como cuando pasamos una funcion al pthread_create
+	 */
+	list_iterate(nivel->items,(void *)paraIterar);
 	return 0;
+}
+
+void paraIterar(ITEM_NIVEL* item){
+
+	printf("id: %c \n", item->id);
+	printf("cantidad: %d \n", item->quantity);
+	printf("posx: %d \n", item->posx);
+	printf("posy: %d \n\n", item->posy);
+
 }
