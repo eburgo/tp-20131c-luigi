@@ -62,7 +62,7 @@ Nivel* proximoNivel(Personaje *pj) {
 }
 
 //Este main esta para probarlo, despues hay que borrarlo porque se usa desde el personaje.
-int main() {
+int mainTest() {
 	Nivel *nivel = malloc(sizeof(Nivel));
 	Personaje *personaje = levantarConfiguracion(
 			"/home/utnso/git/tp-20131c-luigi/Personaje/personajeMario.conf");
