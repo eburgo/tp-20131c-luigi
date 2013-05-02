@@ -70,7 +70,7 @@ void restarRecurso(ITEM_NIVEL* ListaItems, char id) {
         }
         if ((temp != NULL) && (temp->id == id)) {
                 if ((temp->item_type) && (temp->quantity > 0)) {
-                        temp->quantity = temp->quantity--;
+                        temp->quantity--;
                 }
         }
 
