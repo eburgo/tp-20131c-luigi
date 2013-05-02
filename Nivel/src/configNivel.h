@@ -4,7 +4,7 @@
 #include <string.h>
 #include <commons/collections/list.h>
 #include <commons/config.h>
-#include <commons/nivel.h>
+#include <commons/tad_items.h>
 
 typedef struct nivel {
 	char *nombre;
