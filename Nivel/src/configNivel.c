@@ -39,17 +39,17 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 		}
 	}
 
-	//La funcion strtok sirve para separar strings, aca la usamos para
+	//La funcion strsep sirve para separar strings, aca la usamos para
 	//separar la IP y el PUERTO
 	char *ipCompleta = config_get_string_value(config, "orquestador");
-	nivel->ip = strtok(ipCompleta, ":");
-	nivel->puerto = strtok(NULL, ":");
+	nivel->ip = strsep(&ipCompleta, ":");
+	nivel->puerto = ipCompleta;
 
 	return nivel;
 }
 
 //Este main esta para probarlo, despues hay que borrarlo porque se usa desde el personaje.
-int main() {
+int mainTest() {
 	Nivel *nivel = levantarConfiguracion(
 			"/home/utnso/git/tp-20131c-luigi/Nivel/Nivel1.conf");
 	printf("Nivel cargado correctamente!\n");
