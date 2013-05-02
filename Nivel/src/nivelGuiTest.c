@@ -4,7 +4,7 @@ void crearCajas(ITEM_NIVEL* item);
 
 ITEM_NIVEL *itemsEnNivel = NULL;
 
-int main() {
+int mainTest() {
 
 	Nivel *nivel = levantarConfiguracion(
 			"/home/utnso/git/tp-20131c-luigi/Nivel/Nivel1.conf");

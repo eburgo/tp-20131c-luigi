@@ -1,5 +1,5 @@
 #include "configNivel.h"
-void paraIterar(ITEM_NIVEL* item);
+
 Nivel* levantarConfiguracion(char *rutaArchivo) {
 	Nivel *nivel;
 	nivel = malloc(sizeof(Nivel));
@@ -46,32 +46,4 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 	nivel->puerto = atoi(ipCompleta);
 
 	return nivel;
-}
-
-//Este main esta para probarlo, despues hay que borrarlo porque se usa desde el personaje.
-int mainTest() {
-	Nivel *nivel = levantarConfiguracion(
-			"/home/utnso/git/tp-20131c-luigi/Nivel/Nivel1.conf");
-	printf("Nivel cargado correctamente!\n");
-	printf("Nombre:%s\n", nivel->nombre);
-	printf("Recovery:%d\n", nivel->recovery);
-	printf("TiempoChequeoDeadLock:%d\n", nivel->tiempoChequeoDeadLock);
-	printf("Ip:%s\n", nivel->ip);
-	printf("Puerto:%d\n", nivel->puerto);
-	puts("items!: \n");
-	/*paso esa funcion paraIterar que va a recibir como parametro
-	 * nivel->items. Es como cuando pasamos una funcion al pthread_create
-	 */
-	list_iterate(nivel->items,(void *)paraIterar);
-	return 0;
-}
-
-void paraIterar(ITEM_NIVEL* item){
-
-	printf("id: %c \n", item->id);
-	printf("cantidad: %d \n", item->quantity);
-	printf("posx: %d \n", item->posx);
-	printf("posy: %d \n", item->posy);
-	printf("tipo: %c \n\n",item->item_type);
-
 }
