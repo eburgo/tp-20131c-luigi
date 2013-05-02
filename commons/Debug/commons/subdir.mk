@@ -8,8 +8,11 @@ C_SRCS += \
 ../commons/config.c \
 ../commons/error.c \
 ../commons/log.c \
+../commons/nivel.c \
 ../commons/process.c \
+../commons/socket.c \
 ../commons/string.c \
+../commons/tad_items.c \
 ../commons/temporal.c \
 ../commons/txt.c 
 
@@ -18,8 +21,11 @@ OBJS += \
 ./commons/config.o \
 ./commons/error.o \
 ./commons/log.o \
+./commons/nivel.o \
 ./commons/process.o \
+./commons/socket.o \
 ./commons/string.o \
+./commons/tad_items.o \
 ./commons/temporal.o \
 ./commons/txt.o 
 
@@ -28,8 +34,11 @@ C_DEPS += \
 ./commons/config.d \
 ./commons/error.d \
 ./commons/log.d \
+./commons/nivel.d \
 ./commons/process.d \
+./commons/socket.d \
 ./commons/string.d \
+./commons/tad_items.d \
 ./commons/temporal.d \
 ./commons/txt.d 
 

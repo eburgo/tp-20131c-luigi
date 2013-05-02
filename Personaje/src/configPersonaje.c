@@ -8,18 +8,14 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 	personaje->nombre = config_get_string_value(config, "nombre");
 	personaje->vidas = config_get_int_value(config, "vidas");
 	personaje->simbolo = config_get_string_value(config, "simbolo");
-	char *niveles = config_get_string_value(config, "planDeNiveles");
-	//Esta parte le saca los corchetes al string que recibe como String
-	//de los niveles, despues va agarrando cada nombre de nivel (que
-	//vienen separados por coma, luego los busca en la configuracion
-	//agregandole el obj[NivelNumero]. Luego los va metiendo en la lista
-	//del personaje.
-	strsep(&niveles, "[");
-	niveles = strsep(&niveles, "]");
+	char **niveles = config_get_array_value(config,"planDeNiveles");
 	char *nombreNivel;
 	personaje->listaNiveles = queue_create();
 	if (niveles != NULL ) {
-		while ((nombreNivel = strsep(&niveles, ",")) != NULL ) {
+		int i;
+		for(i=0;i<sizeof(niveles);i++){
+			nombreNivel = niveles[i];
+			if(nombreNivel != NULL){
 			Nivel *nivelAAgregar;
 			nivelAAgregar = malloc(sizeof(Nivel));
 			char nivelABuscar[20] = "obj[";
@@ -29,13 +25,16 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 			nivelAAgregar->nombre = nombreNivel;
 			nivelAAgregar->objetos = objetosNivel;
 			queue_push(personaje->listaNiveles, nivelAAgregar);
+			t_list *lista = list_create();
+			list_add(lista, nivelAAgregar);
+			}
 		}
 	}
 	//La funcion strtok sirve para separar strings, aca la usamos para
 	//separar la IP y el PUERTO
 	char *ipCompleta = config_get_string_value(config, "orquestador");
-	personaje->ip = strsep(&ipCompleta, ":");
-	personaje->puerto = ipCompleta;
+	personaje->ip = strtok(ipCompleta, ":");
+	personaje->puerto = strtok(NULL, ":");
 
 	return personaje;
 }
