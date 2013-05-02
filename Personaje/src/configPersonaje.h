@@ -18,7 +18,7 @@ typedef struct personaje {
 	t_queue *listaNiveles;
 	int vidas;
 	char *ip;
-	char *puerto;
+	int puerto;
 } __attribute__((__packed__)) Personaje;
 
 

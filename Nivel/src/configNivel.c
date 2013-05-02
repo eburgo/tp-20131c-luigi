@@ -43,7 +43,7 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 	//separar la IP y el PUERTO
 	char *ipCompleta = config_get_string_value(config, "orquestador");
 	nivel->ip = strsep(&ipCompleta, ":");
-	nivel->puerto = ipCompleta;
+	nivel->puerto = atoi(ipCompleta);
 
 	return nivel;
 }
@@ -57,7 +57,7 @@ int mainTest() {
 	printf("Recovery:%d\n", nivel->recovery);
 	printf("TiempoChequeoDeadLock:%d\n", nivel->tiempoChequeoDeadLock);
 	printf("Ip:%s\n", nivel->ip);
-	printf("Puerto:%s\n", nivel->puerto);
+	printf("Puerto:%d\n", nivel->puerto);
 	puts("items!: \n");
 	/*paso esa funcion paraIterar que va a recibir como parametro
 	 * nivel->items. Es como cuando pasamos una funcion al pthread_create

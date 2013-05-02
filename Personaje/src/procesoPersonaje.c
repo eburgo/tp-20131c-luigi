@@ -11,9 +11,6 @@
 #include <commons/log.h>
 #include "configPersonaje.h"
 
-#define DIRECCION_ORQUESTADOR "127.0.0.1"
-#define PUERTO_ORQUESTADOR 5000
-
 //Funciones
 void manejarSenial(int n);
 
@@ -24,8 +21,10 @@ t_log* logger;
 int main(int argc, char *argv[]) {
 
 	int socketOrquestador;
-	logger = log_create("/home/utnso/personaje.log", "TEST",true, LOG_LEVEL_TRACE);
-	log_info(logger, "Log creado con exito, se procede a loguear el proceso Personaje");
+	logger = log_create("/home/utnso/personaje.log", "TEST", true,
+			LOG_LEVEL_TRACE);
+	log_info(logger,
+			"Log creado con exito, se procede a loguear el proceso Personaje");
 
 	log_debug(logger, "Chequeando el path del personaje...");
 	if (argv[1] == NULL ) {
@@ -34,19 +33,22 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	log_debug(logger, "Levantando configuracion en el path:%s",argv[1]);
+	log_debug(logger, "Levantando configuracion en el path:%s", argv[1]);
 	personaje = levantarConfiguracion(argv[1]);
 	log_debug(logger, "Configuracion del personaje levantada correctamente.");
 
 	signal(SIGUSR1, manejarSenial);
 	signal(SIGTERM, manejarSenial);
 
-	log_debug(logger, "Conectando al orquestador en el puerto:%d",PUERTO_ORQUESTADOR);
-	socketOrquestador = conectarAlServidor(DIRECCION_ORQUESTADOR,
-			PUERTO_ORQUESTADOR);
+	log_debug(logger, "Conectando al orquestador en el puerto:%d",
+			personaje->puerto);
+	socketOrquestador = conectarAlServidor(personaje->ip,
+			personaje->puerto);
 
 	if (socketOrquestador < 0) {
-		log_error(logger, "Error al conectarse con el orquestador en el puerto:%d",PUERTO_ORQUESTADOR);
+		log_error(logger,
+				"Error al conectarse con el orquestador en el puerto:%d",
+				personaje->puerto);
 		log_destroy(logger);
 		return EXIT_FAILURE;
 	}
@@ -66,5 +68,4 @@ void manejarSenial(int n) {
 		break;
 	}
 }
-
 

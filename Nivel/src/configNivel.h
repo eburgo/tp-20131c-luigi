@@ -10,7 +10,7 @@ typedef struct nivel {
 	char *nombre;
 	t_list *items;
 	char *ip;
-	char *puerto;
+	int puerto;
 	int tiempoChequeoDeadLock;
 	int recovery;
 
