@@ -111,11 +111,11 @@ void manejarConexion(int* socket) {
 		NivelConexion *nivel=malloc(sizeof(NivelConexion));
 		nivel->ipNivel="192.168.0.1";
 		nivel->ipPlanificador="192.168.0.1";
-		nivel->puertoNivel="4500";
-		nivel->puertoPlanificador="4501";
+		nivel->puertoNivel=4500;
+		nivel->puertoPlanificador=4501;
 
 		mensaje.PayloadDescriptor=100;
-		mensaje.PayLoadLength=100;
+		mensaje.PayLoadLength=sizeof(int)+sizeof(int)+strlen(nivel->ipPlanificador)+strlen(nivel->ipNivel)+2;
 		mensaje.Payload = nivel;
 		enviarMensaje(*socket,&mensaje);
 
