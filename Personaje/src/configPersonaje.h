@@ -4,6 +4,8 @@
 #include <string.h>
 #include <commons/collections/queue.h>
 #include <commons/config.h>
+#include <commons/socket.h>
+#include <commons/structCompartidas.h>
 
 //Estructuras
 
@@ -37,7 +39,19 @@ int sumarVida(Personaje *pj);
  */
 int sacarVida(Personaje *pj);
 /*
- * devuelve -1 si ya no tiene mas niveles
- * o 0 si se devolvio correctamente
+ * Extrae el primer elemento de la cola.
+ * Devuelve -1 si ya no tiene mas niveles.
  */
-Nivel* proximoNivel(Personaje *pj);
+Nivel* extraerProximoNivel(Personaje *pj);
+
+/*
+ * Se fija el primer elemento de la cola.
+ * Devuelve -1 si ya no tiene mas niveles.
+ */
+Nivel* verProximoNivel(Personaje *pj);
+
+/*
+ * Devuelve una struct de NivelConexion con las ip y puertos
+ * del planificador y del nivel.
+ */
+NivelConexion* pedirNivel(Personaje *personaje,int socketOrquestador);
