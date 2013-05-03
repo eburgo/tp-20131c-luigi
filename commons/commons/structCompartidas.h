@@ -1,6 +1,6 @@
 typedef struct nivelConexion {
 	char* ipPlanificador;
-	char* puertoPlanificador;
+	int puertoPlanificador;
 	char* ipNivel;
-	char* puertoNivel;
+	int puertoNivel;
 } __attribute__((__packed__)) NivelConexion;
