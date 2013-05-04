@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
 	log_debug(logger, "Arrancamos a recorrer los niveles del Personaje:%s",personaje->nombre);
 
-	while(queue_is_empty(personaje->listaNiveles)) {
+	while(!queue_is_empty(personaje->listaNiveles)) {
 
 		log_debug(logger, "Pidiendo el proximo nivel para realizar");
 		NivelConexion* nivelConexion = pedirNivel(personaje, socketOrquestador);

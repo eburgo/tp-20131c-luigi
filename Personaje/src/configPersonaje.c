@@ -72,7 +72,7 @@ NivelConexion* pedirNivel(Personaje* personaje, int socketOrquestador) {
 	Nivel* proximoNivel = verProximoNivel(personaje);
 	mensajeAEnviar.PayloadDescriptor = 100;
 	mensajeAEnviar.Payload = proximoNivel->nombre;
-	mensajeAEnviar.PayLoadLength = strlen(proximoNivel->nombre);
+	mensajeAEnviar.PayLoadLength = strlen(proximoNivel->nombre)+1;
 	enviarMensaje(socketOrquestador, &mensajeAEnviar);
 
 	int respondioMensaje = -1;
