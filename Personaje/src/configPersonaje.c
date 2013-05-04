@@ -70,9 +70,9 @@ NivelConexion* pedirNivel(Personaje* personaje, int socketOrquestador) {
 	NivelConexion* nivelConexion;
 	MPS_MSG mensajeAEnviar, mensajeARecibir;
 	Nivel* proximoNivel = verProximoNivel(personaje);
-	mensajeAEnviar.PayloadDescriptor = 100;
+	mensajeAEnviar.PayloadDescriptor = 1;
 	mensajeAEnviar.Payload = proximoNivel->nombre;
-	mensajeAEnviar.PayLoadLength = strlen(proximoNivel->nombre)+1;
+	mensajeAEnviar.PayLoadLength = strlen(proximoNivel->nombre);
 	enviarMensaje(socketOrquestador, &mensajeAEnviar);
 
 	int respondioMensaje = -1;

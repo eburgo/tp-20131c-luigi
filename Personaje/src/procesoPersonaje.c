@@ -13,18 +13,34 @@
 
 // ----------     Funciones      -----------
 // Recorre un nivel, recibe el socket del nivel y el socket del planificador de ese nivel.
-void recorrerNivel(int socketNivel,int socketPlanificador);
+void recorrerNivel(int socketNivel, int socketPlanificador);
 void manejarSenial(int n);
+//Procesamiento del personaje!
+int procesar();
+// Procesamiento que se realiza cuando se pierde una vida.
+int perderVida();
+// Conectar al orquestador, devuelve el socketOrquestador, y si hay error devuelve 1.
+int conectarAlOrquestador();
+// Recorre la lista de niveles del personaje.
+int recorrerNiveles(int socketOrquestador);
+// Le avisa al nivel que libere los recursos
+void liberarRecursos(int socketNivel);
+// Le notifica al planificador que se murio el personaje.
+void notificarMuerte(int socketPlanificador);
+// Finaliza el proceso
+void finalizar();
+// Levantar la configuracion del personaje, recibe el path.
+int levantarPersonaje(char* path);
 
 //Globales
 Personaje* personaje;
 t_log* logger;
+char* path;
+int socketPlanificador;
+int socketNivel;
 
 int main(int argc, char *argv[]) {
 
-	int socketOrquestador;
-	int socketPlanificador;
-	int socketNivel;
 	logger = log_create("/home/utnso/personaje.log", "TEST", true,
 			LOG_LEVEL_TRACE);
 	log_info(logger,
@@ -37,16 +53,99 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	log_debug(logger, "Levantando configuracion en el path:%s", argv[1]);
-	personaje = levantarConfiguracion(argv[1]);
-	log_debug(logger, "Configuracion del personaje levantada correctamente.");
+	path = argv[1];
+
+	int levantarConfig = levantarPersonaje(path);
+	if (levantarConfig == 1) {
+		return EXIT_FAILURE;
+	}
 
 	signal(SIGUSR1, manejarSenial);
 	signal(SIGTERM, manejarSenial);
 
+	int resultado = procesar();
+	if (resultado == 1) {
+		return EXIT_FAILURE;
+	}
+
+	finalizar();
+	return EXIT_SUCCESS;
+}
+
+void manejarSenial(int n) {
+	switch (n) {
+	case SIGUSR1:
+		personaje->vidas = personaje->vidas + 1;
+		break;
+	case SIGTERM:
+		log_debug(logger, "El personaje %s recibio la señal SIGTERM.",personaje->nombre);
+		int resultado = perderVida();
+		if(resultado == 1) {
+			exit(EXIT_FAILURE);
+		}
+		exit(EXIT_SUCCESS);
+		break;
+	}
+}
+
+void recorrerNivel(int socketNivel, int socketPlanificador) {
+
+}
+
+int perderVida() {
+	if (sacarVida(personaje) > 0) {
+		log_debug(logger, "El personaje %s perdio una vida",personaje->nombre);
+		log_debug(logger, "Liberando recursos. Personaje:%s",personaje->nombre);
+		liberarRecursos(socketNivel);
+		log_debug(logger, "Notificando muerte. Personaje:%s",personaje->nombre);
+		notificarMuerte(socketPlanificador);
+		close(socketPlanificador);
+		close(socketNivel);
+		int resultado = procesar();
+		if (resultado == 1) {
+			return EXIT_FAILURE;
+		}
+		finalizar();
+	} else {
+		log_debug(logger, "El personaje %s se quedo sin vidas",personaje->nombre);
+		log_debug(logger, "Liberando recursos. Personaje:%s",personaje->nombre);
+		liberarRecursos(socketNivel);
+		log_debug(logger, "Notificando muerte. Personaje:%s",personaje->nombre);
+		notificarMuerte(socketPlanificador);
+		close(socketPlanificador);
+		close(socketNivel);
+		int levantarConfig = levantarPersonaje(path);
+		if (levantarConfig == 1) {
+			return EXIT_FAILURE;
+		}
+		int resultado = procesar();
+		if (resultado == 1) {
+			return EXIT_FAILURE;
+		}
+		finalizar();
+	}
+	return EXIT_SUCCESS;
+}
+
+int procesar() {
+	int socketOrquestador = conectarAlOrquestador();
+	if (socketOrquestador == 1) {
+		return EXIT_FAILURE;
+	}
+
+	int resultado = recorrerNiveles(socketOrquestador);
+	if (resultado == 1) {
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int conectarAlOrquestador() {
 	log_debug(logger, "Conectando al orquestador en el puerto:%d. Y la ip:%s",
 			personaje->puerto, personaje->ip);
-	socketOrquestador = conectarAlServidor(personaje->ip, personaje->puerto);
+	int socketOrquestador = conectarAlServidor(personaje->ip,
+			personaje->puerto);
 
 	if (socketOrquestador < 0) {
 		log_error(logger,
@@ -56,9 +155,14 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	log_debug(logger, "Arrancamos a recorrer los niveles del Personaje:%s",personaje->nombre);
+	return socketOrquestador;
+}
 
-	while(!queue_is_empty(personaje->listaNiveles)) {
+int recorrerNiveles(int socketOrquestador) {
+	log_debug(logger, "Arrancamos a recorrer los niveles del Personaje:%s",
+			personaje->nombre);
+
+	while (!queue_is_empty(personaje->listaNiveles)) {
 
 		log_debug(logger, "Pidiendo el proximo nivel para realizar");
 		NivelConexion* nivelConexion = pedirNivel(personaje, socketOrquestador);
@@ -93,25 +197,29 @@ int main(int argc, char *argv[]) {
 			return EXIT_FAILURE;
 		}
 
-		recorrerNivel(socketNivel,socketPlanificador);
+		recorrerNivel(socketNivel, socketPlanificador);
 	}
-
-	close(socketNivel);
-	close(socketPlanificador);
-	log_destroy(logger);
 	return EXIT_SUCCESS;
 }
 
-void manejarSenial(int n) {
-	switch (n) {
-	case SIGUSR1:
-		personaje->vidas = personaje->vidas + 1;
-		break;
-	case SIGTERM:
-		//Aca desarrollar muerte del personaje.
-		break;
-	}
+void liberarRecursos(int socketNivel) {
+
 }
 
-void recorrerNivel(int socketNivel,int socketPlanificador){
+void notificarMuerte(int socketPlanificador) {
+
+}
+
+void finalizar() {
+	close(socketNivel);
+	close(socketPlanificador);
+	log_destroy(logger);
+	log_debug(logger, "El personaje %s finalizo sus niveles de forma correcta.",personaje->nombre);
+}
+
+int levantarPersonaje(char* path) {
+	log_debug(logger, "Levantando configuracion en el path:%s", path);
+	personaje = levantarConfiguracion(path);
+	log_debug(logger, "Configuracion del personaje levantada correctamente.");
+	return EXIT_SUCCESS;
 }
