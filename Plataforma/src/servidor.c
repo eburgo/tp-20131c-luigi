@@ -12,7 +12,6 @@
 #include <commons/collections/queue.h>
 #include <commons/collections/list.h>
 #include <commons/socket.h>
-#include <commons/structCompartidas.h>
 #include "Planificador.h"
 #include "servidor.h"
 
@@ -115,10 +114,10 @@ void manejarConexion(int* socket) {
 		nivel->puertoPlanificador=4501;
 
 		mensaje.PayloadDescriptor=100;
-		mensaje.PayLoadLength=sizeof(int)+sizeof(int)+strlen(nivel->ipPlanificador)+strlen(nivel->ipNivel)+2;
-		mensaje.Payload = nivel;
+		t_stream* stream = nivelConexion_serializer(nivel);
+		mensaje.PayLoadLength= stream->length;
+		mensaje.Payload = stream->data;
 		enviarMensaje(*socket,&mensaje);
-
 		log_info(logger,
 						"se lo deriva al orquestador");
 		break;

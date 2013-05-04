@@ -79,8 +79,10 @@ NivelConexion* pedirNivel(Personaje* personaje, int socketOrquestador) {
 	while (respondioMensaje == -1) {
 		respondioMensaje = recibirMensaje(socketOrquestador, &mensajeARecibir);
 	}
-
-	nivelConexion = (NivelConexion*)mensajeARecibir.Payload;
+	t_stream* stream = malloc(sizeof(t_stream));
+	stream->length = mensajeARecibir.PayLoadLength;
+	stream->data = mensajeARecibir.Payload;
+	nivelConexion = nivelConexion_desserializer(stream);
 
 	close(socketOrquestador);
 	return nivelConexion;

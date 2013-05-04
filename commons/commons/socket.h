@@ -1,5 +1,4 @@
 // TIPO DE DATO DE LOS BUFFER
-#include "structCompartidas.h"
 #ifndef CONEX_H_
 #define CONEX_H_
 
@@ -30,6 +29,13 @@ typedef struct {
 	int length;
 	char* data;
 } t_stream ;
+
+typedef struct nivelConexion {
+	char* ipPlanificador;
+	int puertoPlanificador;
+	char* ipNivel;
+	int puertoNivel;
+} __attribute__((__packed__)) NivelConexion;
 
 typedef struct _MPS_MSG
 {

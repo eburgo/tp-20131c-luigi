@@ -5,7 +5,6 @@
 #include <commons/collections/queue.h>
 #include <commons/config.h>
 #include <commons/socket.h>
-#include <commons/structCompartidas.h>
 
 //Estructuras
 
