@@ -188,3 +188,49 @@ int recibirMensaje(int Socket, MPS_MSG *mensaje)
         return retorno;
 }
 
+t_stream* nivelConexion_serializer(NivelConexion* self){
+	char *data = malloc((sizeof(int)*2) + strlen(self->ipNivel) + strlen(self->ipPlanificador) + 2);
+	t_stream *stream = malloc(sizeof(t_stream));
+	int offset = 0, tmp_size = 0;
+	memcpy(data, self->ipPlanificador, tmp_size = strlen(self->ipPlanificador) + 1);
+	offset = tmp_size;
+
+	memcpy(data, &self->puertoPlanificador, tmp_size = sizeof(int));
+	offset += tmp_size;
+
+	memcpy(data, self->ipNivel, tmp_size = strlen(self->ipNivel) + 1);
+	offset += tmp_size;
+
+	memcpy(data, &self->puertoNivel, tmp_size = sizeof(int));
+	offset += tmp_size;
+
+	stream->length = offset;
+	stream->data = data;
+
+	return stream;
+}
+
+
+NivelConexion* nivelConexion_desserializer(t_stream *stream){
+	NivelConexion* self = malloc(sizeof(NivelConexion));
+	int offset = 0, tmp_size = 0;
+
+	memcpy(self->ipPlanificador,stream->data, tmp_size = (strlen(self->ipPlanificador)+1));
+
+	offset = tmp_size;
+
+	memcpy(&self->puertoPlanificador,stream->data + offset, tmp_size = sizeof(int));
+
+	offset += tmp_size;
+
+	for(tmp_size = 1; (stream->data + offset)[tmp_size-1] != '\0'; tmp_size++);
+	self->ipNivel = malloc(tmp_size);
+	memcpy(self->ipNivel,stream->data + offset, tmp_size);
+
+	offset += tmp_size;
+
+	memcpy(&self->puertoNivel,stream->data + offset, tmp_size = sizeof(int));
+
+	return self;
+}
+

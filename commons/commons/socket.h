@@ -1,4 +1,5 @@
 // TIPO DE DATO DE LOS BUFFER
+#include "structCompartidas.h"
 #ifndef CONEX_H_
 #define CONEX_H_
 
@@ -25,6 +26,11 @@ typedef unsigned char* buffer_t;
 
 /* Estructuras NIPC */
 
+typedef struct {
+	int length;
+	char* data;
+} t_stream ;
+
 typedef struct _MPS_MSG
 {
  int8_t PayloadDescriptor;
@@ -45,5 +51,7 @@ int enviarMensaje(socket_t Socket, MPS_MSG *mensaje);
 int recibirMensaje(int Socket, MPS_MSG *mensaje);
 int recibirInfo(int Socket, buffer_t Buffer, int CantidadARecibir);
 int enviarInfo(int Socket, buffer_t Buffer, int CantidadAEnviar);
+t_stream* nivelConexion_serializer(NivelConexion *self);
+NivelConexion* nivelConexion_desserializer(t_stream *stream);
 
 #endif /* CONEX_H_ */
