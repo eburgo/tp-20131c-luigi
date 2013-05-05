@@ -10,7 +10,7 @@
 
 typedef struct nivel {
 	char *nombre;
-	char *objetos;
+	t_queue *objetos;
 } __attribute__((__packed__)) Nivel;
 
 typedef struct personaje {

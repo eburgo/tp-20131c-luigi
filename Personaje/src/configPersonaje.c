@@ -12,23 +12,29 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 	char *nombreNivel;
 	personaje->listaNiveles = queue_create();
 	if (niveles != NULL ) {
-		int i;
-		for (i = 0; i < sizeof(niveles); i++) {
+		int i = 0;
+		while (niveles[i] != NULL) {
 			nombreNivel = niveles[i];
 			if (nombreNivel != NULL ) {
 				Nivel *nivelAAgregar;
 				nivelAAgregar = malloc(sizeof(Nivel));
+				nivelAAgregar->objetos = queue_create();
 				char nivelABuscar[20] = "obj[";
 				strcat(nivelABuscar, nombreNivel);
 				strcat(nivelABuscar, "]");
-				char *objetosNivel = config_get_string_value(config,
+				char **objetos = config_get_array_value(config,
 						nivelABuscar);
 				nivelAAgregar->nombre = nombreNivel;
-				nivelAAgregar->objetos = objetosNivel;
+				int j = 0;
+				while(objetos[j] != NULL) {
+					queue_push(nivelAAgregar->objetos,objetos[j]);
+					j++;
+				}
 				queue_push(personaje->listaNiveles, nivelAAgregar);
 				t_list *lista = list_create();
 				list_add(lista, nivelAAgregar);
 			}
+			i++;
 		}
 	}
 	//La funcion strtok sirve para separar strings, aca la usamos para
