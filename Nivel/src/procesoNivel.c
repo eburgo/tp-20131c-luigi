@@ -13,10 +13,13 @@
 
 //Funciones
 
+//Esta funcion se encargara de detectar los interbloqueos de los personajes
+//como tambien se comunicara con el orquestador.
 int detectarInterbloqueos();
+//Funcion principal que se utiliza cuando un personaje se conecta al nivel.
 int comunicarPersonajes();
-//Obtiene el puerto que asigno la funcion de forma aleatoria.
-int obtenerPuertoGenereado(int sockedEscucha);
+// Inicia el servidor y devuelve el puerto asignado aleatoreamente.
+int realizarConexion(int* socketEscucha);
 
 //Globales
 Nivel* nivel;
@@ -24,7 +27,8 @@ t_log* logger;
 struct sockaddr_in sAddr;
 
 int main(int argc, char **argv) {
-	int socketEscucha, miPuerto;
+	int *socketEscucha;
+	int miPuerto;
 	logger = log_create("/home/utnso/nivel.log", "TEST", true, LOG_LEVEL_TRACE);
 	log_info(logger,
 			"Log creado con exito, se procede a loguear el proceso Nivel");
@@ -40,51 +44,37 @@ int main(int argc, char **argv) {
 	nivel = levantarConfiguracion(argv[1]);
 	log_debug(logger, "Configuracion del nivel levantada correctamente.");
 
-	miPuerto = obtenerPuertoGenereado(socketEscucha);
+	log_debug(logger, "Levantando el servidor del Nivel:%s",nivel->nombre);
+	socketEscucha = malloc(sizeof(int));
+	miPuerto = realizarConexion(socketEscucha);
+	log_debug(logger, "Servidor del nivel %sse levanto con exito en el puerto:%d",nivel->nombre,miPuerto);
 
 	pthread_t hiloOrquestador;
 	pthread_t hiloPersonajes;
 
-	pthread_create(&hiloOrquestador, NULL, (void*) detectarInterbloqueos,
-			miPuerto );
-	pthread_create(&hiloPersonajes, NULL, (void*) comunicarPersonajes, socketEscucha );
+	pthread_create(&hiloOrquestador, NULL, (void*) detectarInterbloqueos, &miPuerto );
+	pthread_create(&hiloPersonajes, NULL, (void*) comunicarPersonajes, &socketEscucha );
 
 	pthread_join(hiloOrquestador, NULL );
 	pthread_join(hiloPersonajes, NULL );
 
+	close(miPuerto);
 	log_destroy(logger);
 	return EXIT_SUCCESS;
 }
 
-//Esta funcion se encargara de detectar los interbloqueos de los personajes
-//como tambien se comunicara con el orquestador.
 int detectarInterbloqueos(int miPuerto ) {
 	return 0;
 }
 
-//Cata lo hace.
+//Cata lo hace !!!
 int comunicarPersonajes(int socketEscucha) {
-	while (1) {
-			thread = malloc(sizeof(pthread_t));
-			socketNuevaConexion = malloc(sizeof(int));
-			if ((*socketNuevaConexion = accept(socketEscucha, NULL, 0)) < 0) {
-				perror("Error al aceptar conexion entrante");
-				return EXIT_FAILURE;
-
-			}
-
-			pthread_create(thread, NULL, (void*) interactuarConPersonaje,
-					socketNuevaConexion);
-			queue_push(colaHilos, thread);
-		}
-	// recibir una señal para cortar el ciclo-
-	//Funcion que se ocupe de comunicarse con el personaje. El personaje manda un msj con el recurso que necesita
-	//
-
 	return 0;
 }
-int obtenerPuertoGenereado(int socketEscucha) {
-	socketEscucha = iniciarServidor(0);
+int realizarConexion(int* socketEscucha) {
+	*socketEscucha = iniciarServidor(0);
+	struct sockaddr_in sAddr;
 	socklen_t len = sizeof(sAddr);
-	getsockname(socketEscucha, (struct sockaddr *) &sAddr, &len);
+	getsockname(*socketEscucha, (struct sockaddr *) &sAddr, &len);
+	return ntohs(sAddr.sin_port);
 }
