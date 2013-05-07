@@ -14,6 +14,7 @@ socket_t iniciarServidor(int puerto) {
 	sAddr.sin_family = AF_INET;
 	sAddr.sin_port = htons(puerto);
 	sAddr.sin_addr.s_addr = htonl(INADDR_ANY );
+
 	memset(&(sAddr.sin_zero), '\0', 8);
 
 	/* Para no esperar 1 minute a que el socket se libere */
@@ -201,23 +202,63 @@ NivelConexion* nivelConexion_desserializer(t_stream *stream) {
 	NivelConexion* self = malloc(sizeof(NivelConexion));
 	int offset = 0, tmp_size = 0;
 
-	for (tmp_size = 1; (stream->data)[tmp_size - 1] != '\0';tmp_size++);
+	for (tmp_size = 1; (stream->data)[tmp_size - 1] != '\0'; tmp_size++);
 	self->ipPlanificador = malloc(tmp_size);
 	memcpy(self->ipPlanificador, stream->data, tmp_size);
 
 	offset = tmp_size;
 
-	memcpy(&self->puertoPlanificador, stream->data + offset, tmp_size = sizeof(int));
+	memcpy(&self->puertoPlanificador, stream->data + offset, tmp_size =
+			sizeof(int));
 
 	offset += tmp_size;
 
-	for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';tmp_size++);
+	for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';
+			tmp_size++);
 	self->ipNivel = malloc(tmp_size);
 	memcpy(self->ipNivel, stream->data + offset, tmp_size);
 
 	offset += tmp_size;
 
 	memcpy(&self->puertoNivel, stream->data + offset, tmp_size = sizeof(int));
+
+	return self;
+}
+
+t_stream* NivelDatos_serializer(NivelDatos* self) {
+	char *data = malloc(sizeof(int) + strlen(self->ip) + strlen(self->nombre) + 2);
+	t_stream *stream = malloc(sizeof(t_stream));
+	int offset = 0, tmp_size = 0;
+	memcpy(data, self->nombre, tmp_size = strlen(self->nombre) + 1);
+	offset = tmp_size;
+
+	memcpy(data + offset, self->ip, tmp_size = strlen(self->ip) + 1);
+	offset += tmp_size;
+
+	memcpy(data + offset, &self->puerto, tmp_size = sizeof(int));
+	offset += tmp_size;
+
+	stream->length = offset;
+	stream->data = data;
+
+	return stream;
+}
+
+NivelDatos* NivelDatos_desserializer(t_stream *stream) {
+	NivelDatos* self = malloc(sizeof(NivelDatos));
+	int offset = 0, tmp_size = 0;
+
+	for (tmp_size = 1; (stream->data)[tmp_size - 1] != '\0'; tmp_size++);
+	self->nombre = malloc(tmp_size);
+	memcpy(self->ip, stream->data, tmp_size);
+
+	offset = tmp_size;
+
+	for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';tmp_size++);
+	self->ip = malloc(tmp_size);
+	memcpy(self->ip, stream->data + offset, tmp_size);
+
+	memcpy(&self->puerto, stream->data + offset, tmp_size = sizeof(int));
 
 	return self;
 }

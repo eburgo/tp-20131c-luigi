@@ -37,6 +37,12 @@ typedef struct nivelConexion {
 	int puertoNivel;
 } __attribute__((__packed__)) NivelConexion;
 
+typedef struct nivelDatos {
+	char* nombre;
+	char* ip;
+	int puerto;
+} __attribute__((__packed__)) NivelDatos;
+
 typedef struct _MPS_MSG
 {
  int8_t PayloadDescriptor;
@@ -59,5 +65,7 @@ int recibirInfo(int Socket, buffer_t Buffer, int CantidadARecibir);
 int enviarInfo(int Socket, buffer_t Buffer, int CantidadAEnviar);
 t_stream* nivelConexion_serializer(NivelConexion *self);
 NivelConexion* nivelConexion_desserializer(t_stream *stream);
+t_stream* NivelDatos_serializer(NivelDatos *self);
+NivelDatos* NivelDatos_desserializer(t_stream *stream);
 
 #endif /* CONEX_H_ */
