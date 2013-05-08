@@ -13,9 +13,6 @@
 #include <commons/string.h>
 #include <commons/collections/queue.h>
 
-#define IP "127.0.0.1";
-#define REGISTRAR_NIVEL 2
-
 //Funciones
 //Funcion que sirve para iterar los items del nivel e ingresarlos adentro de los items del nivel,
 //al momento de levantar el nivel.
@@ -46,6 +43,8 @@ t_log* logger;
 struct sockaddr_in sAddr;
 ITEM_NIVEL *itemsEnNivel = NULL;
 
+
+#define IP "127.0.0.1";
 //------ TIPOS DE MENSAJES!!------
 #define ERROR_MENSAJE 1
 #define PEDIDO_RECURSOS 2 //lo pide los recursos que necesita.
@@ -54,6 +53,8 @@ ITEM_NIVEL *itemsEnNivel = NULL;
 
 //---- Mensajes a enviar ----
 #define RECURSO_ENCONTRADO 1
+#define REGISTRAR_NIVEL 2
+
 
 int main(int argc, char **argv) {
 	int *socketEscucha;

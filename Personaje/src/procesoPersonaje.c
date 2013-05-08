@@ -31,6 +31,8 @@ void notificarMuerte(int socketPlanificador);
 void finalizar();
 // Levantar la configuracion del personaje, recibe el path.
 int levantarPersonaje(char* path);
+// Enviar un mensaje al nivel y a su planificador notificando de su finalizacion
+int avisarFinalizacion(int socketNivel,int socketPlanificador);
 
 //Globales
 Personaje* personaje;
@@ -38,6 +40,9 @@ t_log* logger;
 char* path;
 int socketPlanificador;
 int socketNivel;
+
+//Tipos de mensaje a enviar
+#define FINALIZAR 4
 
 int main(int argc, char *argv[]) {
 
@@ -215,6 +220,16 @@ void finalizar() {
 	close(socketPlanificador);
 	log_destroy(logger);
 	log_debug(logger, "El personaje %s finalizo sus niveles de forma correcta.",personaje->nombre);
+}
+
+int avisarFinalizacion(int socketNivel,int socketPlanificador) {
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
+	mensajeAEnviar->PayLoadLength = sizeof("Fin");
+	mensajeAEnviar->Payload = "Fin";
+	enviarMensaje(socketNivel,mensajeAEnviar);
+	enviarMensaje(socketPlanificador,mensajeAEnviar);
+	return 0;
 }
 
 int levantarPersonaje(char* path) {
