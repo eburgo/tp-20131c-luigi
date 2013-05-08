@@ -225,7 +225,7 @@ void finalizar() {
 int avisarFinalizacion(int socketNivel,int socketPlanificador) {
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
-	mensajeAEnviar->PayLoadLength = sizeof("Fin");
+	mensajeAEnviar->PayLoadLength = sizeof("Fin") + 1;
 	mensajeAEnviar->Payload = "Fin";
 	enviarMensaje(socketNivel,mensajeAEnviar);
 	enviarMensaje(socketPlanificador,mensajeAEnviar);
