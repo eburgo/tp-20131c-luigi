@@ -1,4 +1,8 @@
-
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <commons/socket.h>
 
 #define DIRECCION INADDR_ANY   //INADDR_ANY representa la direccion de cualquier
 								//interfaz conectada con la computadora
@@ -17,29 +21,12 @@
 //#define MSJ_XX 8
 //#define MSJ_XX 9
 
-typedef struct{
-	char* nombre;
-	char* ip;
-	int puerto;
-	int socket;
-}Nivel;
 
-typedef struct{
-	char* nombreNivel; //nivel q planifica... se entiende no?
-	char* ip;
-	int puerto;
-	t_list bloqueados;
-	t_list personajes; //por orden de llegada para saber cual matar en caso de bloqueo
-}Planificador;
-
-typedef struct{
-	char* nombre;
-}Personaje;
-
-
-int iniciarOrquestador() ;
-void enviarMsjError(int *socket);
+int iniciarOrquestador();
+int iniciarUnPlanificador(char* nombre);
+void enviarMsjError(int *socket,char* msj);
 void manejarConexion(int* socket);
-int registrarNivel(Nivel *nivel);
+int registrarNivel(NivelDatos *nivelDatos, int socket) ;
+int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion);
 
 

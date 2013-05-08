@@ -12,20 +12,22 @@
 #include <commons/collections/dictionary.h>
 #include <commons/collections/list.h>
 #include <commons/socket.h>
-#include "Planificador.h"
-#include "servidor.h"
 #include "Orquestador.h"
+#include "Planificador.h"
 
-pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t semaforo_niveles = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t semaforo_planificadores = PTHREAD_MUTEX_INITIALIZER;
 //Listas compartidas.
 t_dictionary *planificadores;
 t_dictionary *niveles;
 //t_queue *personajesBloqueados;
 
-
 t_log* logger;
 
+
+
 // PROTOTIPOS
+void armarNivelConexion(NivelConexion *nivelConexion,Nivel *nivel,Planificador *planificador);
 
 int iniciarOrquestador() {
 	int socketEscucha;
@@ -75,9 +77,10 @@ void manejarConexion(int* socket) {
 
 	case REGISTRAR_NIVEL:
 		log_info(logger, "Se conecto un nivel");
-		registrarNivel(mensaje.Payload);
+		NivelDatos *nivelDatos = NivelDatos_desserializer(mensaje.Payload);
+		registrarNivel(nivelDatos, *socket);
 
-		iniciarPlanificador();
+		iniciarUnPlanificador(nivelDatos->nombre);
 
 		log_info(logger, "Se creo un hilo para planificar para ese nivel");
 
@@ -86,22 +89,35 @@ void manejarConexion(int* socket) {
 
 		log_info(logger, "Se conecto un personaje.");
 		NivelConexion *nivel = malloc(sizeof(NivelConexion));
-		// prepararNivelConexion()
-			//ok? enviarMsjError(socket,"no esta el nivel")
+		char* nombreNivel = (char*) mensaje.Payload;
 
+		int resultado=prepararNivelConexion(nombreNivel, nivel);
+
+		if (resultado == -1){
+			enviarMsjError(socket,"no esta el nivel");
+			break;
+		}
+		if (resultado == -2) {
+			enviarMsjError(socket,"no esta el planificador");
+			break;
+		}
 		t_stream *stream = nivelConexion_serializer(nivel);
+
+		mensaje.PayloadDescriptor=PJ_PIDE_NIVEL;
+		mensaje.PayLoadLength=stream->length;
+		mensaje.Payload=stream->data;
 
 		enviarMensaje(*socket, &mensaje);
 		log_info(logger, "se lo deriva al orquestador");
 		break;
 	default:
 		log_error(logger, "Tipo de mensaje desconocido.");
-		enviarMsjError(socket);
+		enviarMsjError(socket, "Tipo de mensaje desconocido.");
 		break;
 	}
 }
 
-void enviarMsjError(int *socket,char* msjError) {
+void enviarMsjError(int *socket, char* msjError) {
 	MPS_MSG respuestaError;
 	respuestaError.PayloadDescriptor = ERROR_MENSAJE;
 	respuestaError.PayLoadLength = strlen("msjError") + 1;
@@ -109,25 +125,50 @@ void enviarMsjError(int *socket,char* msjError) {
 	enviarMensaje(*socket, &respuestaError);
 }
 
-int registrarNivel(Nivel *nivel) {
+int registrarNivel(NivelDatos *nivelDatos, int socket) {
+	Nivel* nivel = malloc(sizeof(Nivel));
+	nivel->ip = nivelDatos->ip;
+	nivel->nombre = nivelDatos->nombre;
+	nivel->puerto = nivelDatos->puerto;
+	nivel->socket = socket;
+	pthread_mutex_lock( &semaforo_niveles);
+	dictionary_put(niveles, nivel->nombre, nivel);
+	pthread_mutex_unlock( &semaforo_niveles);
 	return 0;
 }
 
-int prepararNivelConexion(char* nombre,NivelConexion nivelConexion){
-	/*
-	nivel=buscarNivel(nombre))
-		ok?
-	plataforma =buscarPlataforma(nombre)
-		ok? return
-	armarNivelConexion(nivelConexion,nivel,plataforma);
-	return ok;
+int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion) {
+	Nivel *nivel = malloc(sizeof(Nivel));
+	Planificador *planificador = malloc(sizeof(Planificador));
+	pthread_mutex_lock( &semaforo_niveles);
+	nivel=(Nivel*)dictionary_get(niveles,nombre);
+	pthread_mutex_unlock( &semaforo_niveles);
 
-	*/
+	if(nivel==NULL)
+		return -1;
+	pthread_mutex_lock( &semaforo_planificadores);
+	planificador=(Planificador*)dictionary_get(planificadores,nombre);
+	pthread_mutex_lock( &semaforo_planificadores);
+	if (planificador==NULL)
+		return -2;
+
+	armarNivelConexion(nivelConexion,nivel,planificador);
+
+	return 0;
+
+
+return 0;
+}
+void armarNivelConexion(NivelConexion *nivelConexion,Nivel *nivel,Planificador *planificador){
+	nivelConexion->ipNivel=nivel->ip;
+	nivelConexion->puertoNivel=nivel->puerto;
+	nivelConexion->ipPlanificador=planificador->ip;
+	nivelConexion->puertoPlanificador= planificador->puerto;
 }
 
-int iniciarUnPlanificador(Nivel *nivel) {
-	pthread_t thread;
-	pthread_create(&thread, NULL, (void*) iniciarPlanificador, nivel);
-	return 0;
+int iniciarUnPlanificador(char* nombreNivel) {
+pthread_t thread;
+pthread_create(&thread, NULL, (void*) iniciarPlanificador, (void*) nombreNivel);
+return 0;
 }
 
