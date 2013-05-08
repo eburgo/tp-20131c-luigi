@@ -10,6 +10,7 @@
 #include <commons/log.h>
 #include "configNivel.h"
 #include <commons/socket.h>
+#include <commons/string.h>
 #include <commons/collections/queue.h>
 
 #define IP "127.0.0.1";
@@ -31,9 +32,9 @@ int realizarConexion(int* socketEscucha);
 // Inicializara al personaje, lo guardara en la lista de items que estan en el nivel.
 int inicializarPersonaje(char* simbolo);
 //Se fija si el recurso esta disponible y le responde por si o por no.
-int administrarPeticionDeRecurso(MPS_MSG* mensajeARecibir);
+int administrarPeticionDeRecurso(MPS_MSG* mensajeARecibir, int socketConPersonaje);
 //Realiza el movimiento del personaje
-int realizarMovimiento(MPS_MSG* mensajeARecibir);
+int realizarMovimiento(MPS_MSG* mensajeARecibir, int socketConPersonaje);
 //Se comunicara con el personaje.
 int interactuarConPersonaje(int socketNuevaConexion);
 //En caso de que se ingrese un recurso qe no existe.
@@ -50,6 +51,9 @@ ITEM_NIVEL *itemsEnNivel = NULL;
 #define PEDIDO_RECURSOS 2 //lo pide los recursos que necesita.
 #define AVISO_MOVIMIENTO 3 // Le avisa que se va a mover
 #define FINALIZAR 4 // Avisod el personaje que no tiene mas recursos que obtener, por ende termina el nivel
+
+//---- Mensajes a enviar ----
+#define RECURSO_ENCONTRADO 1
 
 int main(int argc, char **argv) {
 	int *socketEscucha;
@@ -81,12 +85,12 @@ int main(int argc, char **argv) {
 			nivel->nombre, miPuerto);
 
 	log_debug(logger,
-			"Conectando al %s con el Orquestador, con la ip %s y el puerto %d",
+			"Conectando al %s con el Orquestador, IpNivel: %s PuertoNivel: %d",
 			nivel->nombre, nivel->ip, miPuerto);
 	socketOrquestador = conectarConOrquestador(miPuerto);
 	if (socketOrquestador == 1) {
 		log_error(logger,
-				"Error al conectar al orquestador con la con la ip %s y el puerto %d",
+				"Error al conectar al orquestador IpNivel: %s PuertoNivel: %d",
 				nivel->ip, miPuerto);
 		return EXIT_FAILURE;
 	}
@@ -179,10 +183,10 @@ int interactuarConPersonaje(int socketConPersonaje) {
 
 		switch (mensajeARecibir.PayloadDescriptor) {
 		case PEDIDO_RECURSOS:
-			administrarPeticionDeRecurso(&mensajeARecibir);
+			administrarPeticionDeRecurso(&mensajeARecibir, socketConPersonaje);
 			break;
 		case AVISO_MOVIMIENTO:
-			realizarMovimiento(&mensajeARecibir);
+			realizarMovimiento(&mensajeARecibir, socketConPersonaje);
 			break;
 		case FINALIZAR:
 			terminoElNivel = 1;
@@ -204,11 +208,30 @@ int informarError(int socketConPersonaje) {
 	enviarMensaje(socketConPersonaje, &respuestaError);
 	return 0;
 }
-int administrarPeticionDeRecurso(MPS_MSG* mensajeARecibir) {
-	return 0;
+
+int administrarPeticionDeRecurso(MPS_MSG* mensajeARecibir, int socketConPersonaje) {
+	char* recursoABuscar = mensajeARecibir->Payload;
+	int esElRecurso(ITEM_NIVEL* recursoLista){
+		char* charABuscar = string_substring_until(&(recursoLista->id),1);
+		return string_equals_ignore_case(charABuscar,recursoABuscar);
+	}
+	char* recursoEncontrado = list_find(nivel->items, (void*)esElRecurso);
+	if(recursoEncontrado == 0){
+		log_warning(logger,"El recurso no se encontro");
+		return EXIT_FAILURE;
+	}
+	log_debug(logger,"Recurso encontrado para el personaje.Recurso: %s",recursoABuscar);
+	log_debug(logger,"Se procede a comunicarle al personaje que tiene el recurso necesario");
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	mensajeAEnviar->PayloadDescriptor = RECURSO_ENCONTRADO;
+	mensajeAEnviar->PayLoadLength = sizeof(char);
+	mensajeAEnviar->Payload = recursoABuscar;
+	enviarMensaje(socketConPersonaje,mensajeAEnviar);
+	log_debug(logger,"Mensaje enviado con exito.");
+	return EXIT_SUCCESS;
 }
 
-int realizarMovimiento(MPS_MSG* mensajeARecibir){
+int realizarMovimiento(MPS_MSG* mensajeARecibir, int socketConPersonaje){
 	return 0;
 }
 
