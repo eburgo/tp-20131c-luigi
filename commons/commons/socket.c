@@ -1,5 +1,13 @@
 #include "socket.h"
 
+int realizarConexion(int* socketEscucha) {
+	*socketEscucha = iniciarServidor(0);
+	struct sockaddr_in sAddr;
+	socklen_t len = sizeof(sAddr);
+	getsockname(*socketEscucha, (struct sockaddr *) &sAddr, &len);
+	return ntohs(sAddr.sin_port);
+}
+
 socket_t iniciarServidor(int puerto) {
 	int sSocket;
 	struct sockaddr_in sAddr;

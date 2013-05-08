@@ -68,4 +68,7 @@ NivelConexion* nivelConexion_desserializer(t_stream *stream);
 t_stream* NivelDatos_serializer(NivelDatos *self);
 NivelDatos* NivelDatos_desserializer(t_stream *stream);
 
+// Inicia el servidor y devuelve el puerto asignado aleatoreamente.
+int realizarConexion(int* socketEscucha);
+
 #endif /* CONEX_H_ */

@@ -24,8 +24,6 @@ int detectarInterbloqueos();
 int conectarConOrquestador(int miPuerto);
 //Funcion principal que se utiliza cuando un personaje se conecta al nivel.
 int comunicarPersonajes();
-// Inicia el servidor y devuelve el puerto asignado aleatoreamente.
-int realizarConexion(int* socketEscucha);
 // Inicializara al personaje, lo guardara en la lista de items que estan en el nivel.
 int inicializarPersonaje(char* simbolo);
 //Se fija si el recurso esta disponible y le responde por si o por no.
@@ -239,14 +237,6 @@ int realizarMovimiento(MPS_MSG* mensajeARecibir, int socketConPersonaje){
 int inicializarPersonaje(char* simbolo) {
 	CrearPersonaje(&itemsEnNivel, *simbolo, 0, 0);
 	return EXIT_SUCCESS;
-}
-
-int realizarConexion(int* socketEscucha) {
-	*socketEscucha = iniciarServidor(0);
-	struct sockaddr_in sAddr;
-	socklen_t len = sizeof(sAddr);
-	getsockname(*socketEscucha, (struct sockaddr *) &sAddr, &len);
-	return ntohs(sAddr.sin_port);
 }
 
 void crearCajasInit(ITEM_NIVEL* item) {

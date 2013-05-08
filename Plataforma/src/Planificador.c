@@ -33,3 +33,13 @@ void agregarmeEnPlanificadores(Planificador* planificador){
 	dictionary_put(planificadores,planificador->nombreNivel,(void*)planificador);
 	pthread_mutex_lock( &semaforo_planificadores);
 }
+
+int notificarMovimientoPermitido(int socketPersonaje) {
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	mensajeAEnviar->PayloadDescriptor = MOVIMIENTO_PERMITIDO;
+	mensajeAEnviar->PayLoadLength = strlen("Movete") + 1;
+	mensajeAEnviar->Payload = "Movete";
+	enviarMensaje(socketPersonaje,mensajeAEnviar);
+	return 0;
+}
+
