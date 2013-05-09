@@ -34,6 +34,8 @@ int realizarMovimiento(MPS_MSG* mensajeARecibir, int socketConPersonaje);
 int interactuarConPersonaje(int socketNuevaConexion);
 //En caso de que se ingrese un recurso qe no existe.
 int informarError(int socketConPersonaje);
+//Comprueba que la posición actual del personaje es la correcta
+int posicionPersonajeCorrecta(int socketConPersonaje);
 
 //Globales
 Nivel* nivel;
@@ -50,6 +52,7 @@ ITEM_NIVEL *itemsEnNivel = NULL;
 #define FINALIZAR 4 // Avisod el personaje que no tiene mas recursos que obtener, por ende termina el nivel
 
 //---- Mensajes a enviar ----
+#define RECURSO_NO_ENCONTRADO 0
 #define RECURSO_ENCONTRADO 1
 #define REGISTRAR_NIVEL 2
 
@@ -80,7 +83,7 @@ int main(int argc, char **argv) {
 	socketEscucha = malloc(sizeof(int));
 	miPuerto = realizarConexion(socketEscucha);
 	log_debug(logger,
-			"Servidor del nivel %sse levanto con exito en el puerto:%d",
+			"Servidor del nivel %s se levanto con exito en el puerto:%d",
 			nivel->nombre, miPuerto);
 
 	log_debug(logger,
@@ -168,6 +171,8 @@ int interactuarConPersonaje(int socketConPersonaje) {
 	MPS_MSG mensajeInicializar;
 
 	int recibioMensaje = -1;
+
+
 	while(recibioMensaje == -1) {
 		recibirMensaje(socketConPersonaje, &mensajeInicializar);
 	}
@@ -182,10 +187,15 @@ int interactuarConPersonaje(int socketConPersonaje) {
 
 		switch (mensajeARecibir.PayloadDescriptor) {
 		case PEDIDO_RECURSOS:
+			if (posicionPersonajeCorrecta(socketConPersonaje) == 1){
 			administrarPeticionDeRecurso(&mensajeARecibir, socketConPersonaje);
+			}
+			//Dibujar el estado actual de los recursos y los personajes en el mapa.
 			break;
 		case AVISO_MOVIMIENTO:
 			realizarMovimiento(&mensajeARecibir, socketConPersonaje);
+			// Para mi esta funcion deberia ir dentro de AdministrarPeticionesDeRecurso().
+			//Ya que unicamente el personaje se podrá mover si tiene un recurso dispnible.
 			break;
 		case FINALIZAR:
 			terminoElNivel = 1;
@@ -217,7 +227,15 @@ int administrarPeticionDeRecurso(MPS_MSG* mensajeARecibir, int socketConPersonaj
 	char* recursoEncontrado = list_find(nivel->items, (void*)esElRecurso);
 	if(recursoEncontrado == 0){
 		log_warning(logger,"El recurso no se encontro");
-		return EXIT_FAILURE;
+		log_debug(logger,"Se procede a comunicarle al personaje que no tiene el recurso necesario");
+		MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+		mensajeAEnviar->PayloadDescriptor = RECURSO_NO_ENCONTRADO;
+		enviarMensaje(socketConPersonaje,mensajeAEnviar);
+
+		//El personaje se deberia bloquear e informar al orquestador del bloqueo.
+		log_debug(logger,"Mensaje enviado con exito.");
+		return EXIT_SUCCESS;
+
 	}
 	log_debug(logger,"Recurso encontrado para el personaje.Recurso: %s",recursoABuscar);
 	log_debug(logger,"Se procede a comunicarle al personaje que tiene el recurso necesario");
@@ -242,4 +260,6 @@ int inicializarPersonaje(char* simbolo) {
 void crearCajasInit(ITEM_NIVEL* item) {
 	CrearCaja(&itemsEnNivel, item->id, item->posx, item->posy, item->quantity);
 }
-
+int posicionPersonajeCorrecta(int socketConPersonaje){
+	return 1;
+}
