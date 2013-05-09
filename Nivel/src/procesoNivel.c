@@ -13,6 +13,13 @@
 #include <commons/string.h>
 #include <commons/collections/queue.h>
 
+typedef struct ubicacionP {
+	int x;
+	int y;
+	char* simbolo;
+	t_queue* recursosObtenidos;
+} Personaje;
+
 //Funciones
 //Funcion que sirve para iterar los items del nivel e ingresarlos adentro de los items del nivel,
 //al momento de levantar el nivel.
@@ -27,15 +34,22 @@ int comunicarPersonajes();
 // Inicializara al personaje, lo guardara en la lista de items que estan en el nivel.
 int inicializarPersonaje(char* simbolo);
 //Se fija si el recurso esta disponible y le responde por si o por no.
-int administrarPeticionDeRecurso(MPS_MSG* mensajeARecibir, int socketConPersonaje);
-//Realiza el movimiento del personaje
-int realizarMovimiento(MPS_MSG* mensajeARecibir, int socketConPersonaje);
+int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int socketConPersonaje);
 //Se comunicara con el personaje.
 int interactuarConPersonaje(int socketNuevaConexion);
 //En caso de que se ingrese un recurso qe no existe.
 int informarError(int socketConPersonaje);
 //Comprueba que la posición actual del personaje es la correcta
 int posicionPersonajeCorrecta(int socketConPersonaje);
+//Realiza el movimiento del Personaje
+int realizarMovimiento(Posicion* posicion, Personaje* personaje);
+//busca una caja en la lista de cajas del nivel
+ITEM_NIVEL* buscarCaja(char* cajaABuscar);
+// restar un recurso de la caja si el personaje se encuentra en la misma posicion de la caja.
+// y lo agrega en una lista de recursos pedidos por un personaje
+// Y si el recurso no esta entonces le envia un mensaje de que tiene que estar bloqueado porque no hay recurso y la puta madrew que te pario
+// Si esta el recurso le envia un mensaje que el recurso esta. :D :D :D
+int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje);
 
 //Globales
 Nivel* nivel;
@@ -43,19 +57,17 @@ t_log* logger;
 struct sockaddr_in sAddr;
 ITEM_NIVEL *itemsEnNivel = NULL;
 
-
 #define IP "127.0.0.1";
 //------ TIPOS DE MENSAJES!!------
-#define ERROR_MENSAJE 1
-#define PEDIDO_RECURSOS 2 //lo pide los recursos que necesita.
+#define ERROR_MENSAJE 0
+#define UBICACION_CAJA 2 // Pide la ubicacion de la caja de recursos que necesita.
 #define AVISO_MOVIMIENTO 3 // Le avisa que se va a mover
 #define FINALIZAR 4 // Avisod el personaje que no tiene mas recursos que obtener, por ende termina el nivel
-
+#define PEDIR_RECURSO 5
 //---- Mensajes a enviar ----
-#define RECURSO_NO_ENCONTRADO 0
-#define RECURSO_ENCONTRADO 1
 #define REGISTRAR_NIVEL 2
-
+#define SIN_RECURSOS 6
+#define POSICION_ERRONEA 7
 
 int main(int argc, char **argv) {
 	int *socketEscucha;
@@ -169,33 +181,32 @@ int interactuarConPersonaje(int socketConPersonaje) {
 	int terminoElNivel = 0;
 	MPS_MSG mensajeARecibir;
 	MPS_MSG mensajeInicializar;
+	Personaje* personaje = malloc(sizeof(Personaje));
 
 	int recibioMensaje = -1;
 
-
-	while(recibioMensaje == -1) {
+	while (recibioMensaje == -1) {
 		recibirMensaje(socketConPersonaje, &mensajeInicializar);
 	}
 
-	char* simbolo = mensajeInicializar.Payload;
-	inicializarPersonaje(simbolo);
+	personaje->simbolo = mensajeInicializar.Payload;
+	inicializarPersonaje(personaje->simbolo);
 
 	while (terminoElNivel == 0) {
 		recibirMensaje(socketConPersonaje, &mensajeARecibir);
 
-		log_debug(logger, "Se recibio un mensaje tipo: %d",mensajeARecibir.PayloadDescriptor);
+		log_debug(logger, "Se recibio un mensaje tipo: %d",
+				mensajeARecibir.PayloadDescriptor);
 
 		switch (mensajeARecibir.PayloadDescriptor) {
-		case PEDIDO_RECURSOS:
-			if (posicionPersonajeCorrecta(socketConPersonaje) == 1){
-			administrarPeticionDeRecurso(&mensajeARecibir, socketConPersonaje);
-			}
-			//Dibujar el estado actual de los recursos y los personajes en el mapa.
+		case UBICACION_CAJA:
+			administrarPeticionDeCaja(&mensajeARecibir, socketConPersonaje);
 			break;
 		case AVISO_MOVIMIENTO:
-			realizarMovimiento(&mensajeARecibir, socketConPersonaje);
-			// Para mi esta funcion deberia ir dentro de AdministrarPeticionesDeRecurso().
-			//Ya que unicamente el personaje se podrá mover si tiene un recurso dispnible.
+			realizarMovimiento(mensajeARecibir.Payload, personaje);
+			break;
+		case PEDIR_RECURSO:
+			darRecurso(mensajeARecibir.Payload, personaje, socketConPersonaje);
 			break;
 		case FINALIZAR:
 			terminoElNivel = 1;
@@ -218,38 +229,52 @@ int informarError(int socketConPersonaje) {
 	return 0;
 }
 
-int administrarPeticionDeRecurso(MPS_MSG* mensajeARecibir, int socketConPersonaje) {
-	char* recursoABuscar = mensajeARecibir->Payload;
-	int esElRecurso(ITEM_NIVEL* recursoLista){
-		char* charABuscar = string_substring_until(&(recursoLista->id),1);
-		return string_equals_ignore_case(charABuscar,recursoABuscar);
-	}
-	char* recursoEncontrado = list_find(nivel->items, (void*)esElRecurso);
-	if(recursoEncontrado == 0){
-		log_warning(logger,"El recurso no se encontro");
-		log_debug(logger,"Se procede a comunicarle al personaje que no tiene el recurso necesario");
-		MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
-		mensajeAEnviar->PayloadDescriptor = RECURSO_NO_ENCONTRADO;
-		enviarMensaje(socketConPersonaje,mensajeAEnviar);
+int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje) {
+	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
+	ITEM_NIVEL* caja = buscarCaja(recurso);
 
-		//El personaje se deberia bloquear e informar al orquestador del bloqueo.
-		log_debug(logger,"Mensaje enviado con exito.");
-		return EXIT_SUCCESS;
-
+	if (caja->quantity == 0) {
+		mensaje->PayloadDescriptor = SIN_RECURSOS;
+		mensaje->PayLoadLength = sizeof(char);
+		mensaje->Payload = "0";
+		return 0;
 	}
-	log_debug(logger,"Recurso encontrado para el personaje.Recurso: %s",recursoABuscar);
-	log_debug(logger,"Se procede a comunicarle al personaje que tiene el recurso necesario");
+	if (!(caja->posx == personaje->x && caja->posy == personaje->y)) {
+		mensaje->PayloadDescriptor = POSICION_ERRONEA;
+		mensaje->PayLoadLength = sizeof(char);
+		mensaje->Payload = "0";
+		return 0;
+	}
+	restarRecurso(itemsEnNivel,caja->id);
+	queue_push(personaje->recursosObtenidos,&caja->id);
+	return 0;
+}
+
+int realizarMovimiento(Posicion* posicion, Personaje* personaje) {
+	MoverPersonaje(itemsEnNivel, *personaje->simbolo, posicion->x, posicion->y);
+	return 0;
+}
+
+int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int socketConPersonaje) {
+	ITEM_NIVEL* caja = buscarCaja(mensajeARecibir->Payload);
+	Posicion* posicion = malloc(sizeof(Posicion));
+	posicion->x = caja->posx;
+	posicion->y = caja->posy;
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
-	mensajeAEnviar->PayloadDescriptor = RECURSO_ENCONTRADO;
-	mensajeAEnviar->PayLoadLength = sizeof(char);
-	mensajeAEnviar->Payload = recursoABuscar;
-	enviarMensaje(socketConPersonaje,mensajeAEnviar);
-	log_debug(logger,"Mensaje enviado con exito.");
+	mensajeAEnviar->PayloadDescriptor = UBICACION_CAJA;
+	mensajeAEnviar->PayLoadLength = sizeof(Posicion);
+	mensajeAEnviar->Payload = posicion;
+	enviarMensaje(socketConPersonaje, mensajeAEnviar);
+	log_debug(logger, "Mensaje enviado con exito.");
 	return EXIT_SUCCESS;
 }
 
-int realizarMovimiento(MPS_MSG* mensajeARecibir, int socketConPersonaje){
-	return 0;
+ITEM_NIVEL* buscarCaja(char* id) {
+	int esElRecurso(ITEM_NIVEL* recursoLista) {
+		char* idABuscar = string_substring_until(&(recursoLista->id), 1);
+		return string_equals_ignore_case(idABuscar, id);
+	}
+	return list_find(nivel->items, (void*) esElRecurso);
 }
 
 int inicializarPersonaje(char* simbolo) {
@@ -260,6 +285,6 @@ int inicializarPersonaje(char* simbolo) {
 void crearCajasInit(ITEM_NIVEL* item) {
 	CrearCaja(&itemsEnNivel, item->id, item->posx, item->posy, item->quantity);
 }
-int posicionPersonajeCorrecta(int socketConPersonaje){
+int posicionPersonajeCorrecta(int socketConPersonaje) {
 	return 1;
 }
