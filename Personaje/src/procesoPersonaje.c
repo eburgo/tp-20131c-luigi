@@ -32,7 +32,15 @@ void finalizar();
 // Levantar la configuracion del personaje, recibe el path.
 int levantarPersonaje(char* path);
 // Enviar un mensaje al nivel y a su planificador notificando de su finalizacion
-int avisarFinalizacion(int socketNivel,int socketPlanificador);
+void notificarIngresoAlNivel(int socketNivel);
+void consultarUbicacionCaja(int socketNivel,Posicion* posicion);
+int esperarConfirmacionDelPlanificador(int socketPlanificador);
+void realizarMovimiento(int ubicacionEnNivelX,int ubicacionEnNivelY,Posicion* posicion,int socketNivel);
+void movimientoRealizado(int socketPlanificador);
+int pedirRecurso(int socketNivel);
+void avisarDelBloqueo(int socketPlanificador);
+void nivelTerminado(int socketNivel);
+void avisarRecursoOk(int socketPlanificador);
 
 //Globales
 Personaje* personaje;
@@ -83,9 +91,10 @@ void manejarSenial(int n) {
 		personaje->vidas = personaje->vidas + 1;
 		break;
 	case SIGTERM:
-		log_debug(logger, "El personaje %s recibio la señal SIGTERM.",personaje->nombre);
+		log_debug(logger, "El personaje %s recibio la señal SIGTERM.",
+				personaje->nombre);
 		int resultado = perderVida();
-		if(resultado == 1) {
+		if (resultado == 1) {
 			exit(EXIT_FAILURE);
 		}
 		exit(EXIT_SUCCESS);
@@ -93,16 +102,68 @@ void manejarSenial(int n) {
 	}
 }
 
-void recorrerNivel(int socketNivel, int socketPlanificador) {
+void notificarIngresoAlNivel(int socketNivel){
 
+}
+
+void consultarUbicacionCaja(int socketNivel,Posicion* posicion){
+
+}
+int esperarConfirmacionDelPlanificador(int socketPlanificador){
+	return 0;
+}
+void realizarMovimiento(int ubicacionEnNivelX, int ubicacionEnNivelY, Posicion* posicion,int socketNivel){
+
+}
+void movimientoRealizado(int socketPlanificador){
+
+}
+int pedirRecurso(int socketNivel){
+	return 0;
+}
+void avisarDelBloqueo(int socketPlanificador){
+
+}
+void nivelTerminado(int socketNivel){
+
+}
+void avisarRecursoOk(int socketPlanificador){
+
+}
+
+void recorrerNivel(int socketNivel, int socketPlanificador) {
+	Nivel *nivel = queue_peek(personaje->listaNiveles);
+	int ubicacionEnNivelX = 0;
+	int ubicacionEnNivelY = 0;
+	notificarIngresoAlNivel(socketNivel);
+	while(!queue_is_empty(nivel->objetos)){
+		Posicion* posicion = malloc(sizeof(Posicion));
+		consultarUbicacionCaja(socketNivel,posicion);
+		while(ubicacionEnNivelX != posicion->x && ubicacionEnNivelY != posicion->y){
+			int movimientoPermitido = 0;
+			while(movimientoPermitido == 0){
+				movimientoPermitido = esperarConfirmacionDelPlanificador(socketPlanificador);
+			}
+			realizarMovimiento(ubicacionEnNivelX,ubicacionEnNivelY,posicion,socketNivel);
+			movimientoRealizado(socketPlanificador);
+		}
+		int recursoAsignado = pedirRecurso(socketNivel);
+		if (recursoAsignado == 0) {
+			avisarDelBloqueo(socketPlanificador);
+		}
+		avisarRecursoOk(socketPlanificador);
+	}
+	nivelTerminado(socketNivel);
 }
 
 int perderVida() {
 	if (sacarVida(personaje) > 0) {
-		log_debug(logger, "El personaje %s perdio una vida",personaje->nombre);
-		log_debug(logger, "Liberando recursos. Personaje:%s",personaje->nombre);
+		log_debug(logger, "El personaje %s perdio una vida", personaje->nombre);
+		log_debug(logger, "Liberando recursos. Personaje:%s",
+				personaje->nombre);
 		liberarRecursos(socketNivel);
-		log_debug(logger, "Notificando muerte. Personaje:%s",personaje->nombre);
+		log_debug(logger, "Notificando muerte. Personaje:%s",
+				personaje->nombre);
 		notificarMuerte(socketPlanificador);
 		close(socketPlanificador);
 		close(socketNivel);
@@ -112,10 +173,13 @@ int perderVida() {
 		}
 		finalizar();
 	} else {
-		log_debug(logger, "El personaje %s se quedo sin vidas",personaje->nombre);
-		log_debug(logger, "Liberando recursos. Personaje:%s",personaje->nombre);
+		log_debug(logger, "El personaje %s se quedo sin vidas",
+				personaje->nombre);
+		log_debug(logger, "Liberando recursos. Personaje:%s",
+				personaje->nombre);
 		liberarRecursos(socketNivel);
-		log_debug(logger, "Notificando muerte. Personaje:%s",personaje->nombre);
+		log_debug(logger, "Notificando muerte. Personaje:%s",
+				personaje->nombre);
 		notificarMuerte(socketPlanificador);
 		close(socketPlanificador);
 		close(socketNivel);
@@ -219,16 +283,17 @@ void finalizar() {
 	close(socketNivel);
 	close(socketPlanificador);
 	log_destroy(logger);
-	log_debug(logger, "El personaje %s finalizo sus niveles de forma correcta.",personaje->nombre);
+	log_debug(logger, "El personaje %s finalizo sus niveles de forma correcta.",
+			personaje->nombre);
 }
 
-int avisarFinalizacion(int socketNivel,int socketPlanificador) {
+int avisarFinalizacion(int socketNivel, int socketPlanificador) {
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
 	mensajeAEnviar->PayLoadLength = strlen("Fin") + 1;
 	mensajeAEnviar->Payload = "Fin";
-	enviarMensaje(socketNivel,mensajeAEnviar);
-	enviarMensaje(socketPlanificador,mensajeAEnviar);
+	enviarMensaje(socketNivel, mensajeAEnviar);
+	enviarMensaje(socketPlanificador, mensajeAEnviar);
 	return 0;
 }
 
