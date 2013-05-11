@@ -33,14 +33,22 @@ void finalizar();
 int levantarPersonaje(char* path);
 // Enviar un mensaje al nivel y a su planificador notificando de su finalizacion
 void notificarIngresoAlNivel(int socketNivel);
+// Consulta la ubicacion de una caja de recursos
 void consultarUbicacionCaja(int socketNivel,Posicion* posicion);
+// Espera un mensaje departe del planificador para poder realizar un movimiento
 int esperarConfirmacionDelPlanificador(int socketPlanificador);
+// Realiza la logica del movimiento y le avisa al nivel a donde moverse
 void realizarMovimiento(int ubicacionEnNivelX,int ubicacionEnNivelY,Posicion* posicion,int socketNivel);
+// Le avisa al planificador que realizo un movimiento
 void movimientoRealizado(int socketPlanificador);
+// Pide un recurso al nivel
 int pedirRecurso(int socketNivel);
+// Notifica al planificador del bloqueo
 void avisarDelBloqueo(int socketPlanificador);
+// Avisa al nivel que termino el nivel
 void nivelTerminado(int socketNivel);
-void avisarRecursoOk(int socketPlanificador);
+// Retorna 1 si el personaje esta en la ubicacion de la caja que necesita.
+int estaEnPosicionDeLaCaja(Posicion* posicion,int ubicacionEnNivelX,int ubicacionEnNivelY);
 
 //Globales
 Personaje* personaje;
@@ -127,9 +135,6 @@ void avisarDelBloqueo(int socketPlanificador){
 void nivelTerminado(int socketNivel){
 
 }
-void avisarRecursoOk(int socketPlanificador){
-
-}
 
 void recorrerNivel(int socketNivel, int socketPlanificador) {
 	Nivel *nivel = queue_peek(personaje->listaNiveles);
@@ -139,21 +144,28 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	while(!queue_is_empty(nivel->objetos)){
 		Posicion* posicion = malloc(sizeof(Posicion));
 		consultarUbicacionCaja(socketNivel,posicion);
-		while(ubicacionEnNivelX != posicion->x && ubicacionEnNivelY != posicion->y){
+		int recursoAsignado;
+		while(!estaEnPosicionDeLaCaja(posicion,ubicacionEnNivelX,ubicacionEnNivelY)){
 			int movimientoPermitido = 0;
 			while(movimientoPermitido == 0){
 				movimientoPermitido = esperarConfirmacionDelPlanificador(socketPlanificador);
 			}
 			realizarMovimiento(ubicacionEnNivelX,ubicacionEnNivelY,posicion,socketNivel);
-			movimientoRealizado(socketPlanificador);
+			if(estaEnPosicionDeLaCaja(posicion,ubicacionEnNivelX,ubicacionEnNivelY)){
+				recursoAsignado = pedirRecurso(socketNivel);
+				if (recursoAsignado == 0) {
+					avisarDelBloqueo(socketPlanificador);
+				} else {
+					movimientoRealizado(socketPlanificador);
+				}
+			}
 		}
-		int recursoAsignado = pedirRecurso(socketNivel);
-		if (recursoAsignado == 0) {
-			avisarDelBloqueo(socketPlanificador);
-		}
-		avisarRecursoOk(socketPlanificador);
 	}
 	nivelTerminado(socketNivel);
+}
+
+int estaEnPosicionDeLaCaja(Posicion* posicion,int ubicacionEnNivelX,int ubicacionEnNivelY){
+	return (ubicacionEnNivelX == posicion->x && ubicacionEnNivelY == posicion->y);
 }
 
 int perderVida() {
