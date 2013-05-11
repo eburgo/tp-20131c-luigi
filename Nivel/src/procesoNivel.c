@@ -252,6 +252,8 @@ int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje) {
 
 int realizarMovimiento(Posicion* posicion, Personaje* personaje) {
 	MoverPersonaje(itemsEnNivel, *personaje->simbolo, posicion->x, posicion->y);
+	personaje->x = posicion->x;
+	personaje->y = posicion->y;
 	return 0;
 }
 
