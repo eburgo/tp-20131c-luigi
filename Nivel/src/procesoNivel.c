@@ -57,6 +57,8 @@ t_log* logger;
 struct sockaddr_in sAddr;
 ITEM_NIVEL *itemsEnNivel = NULL;
 
+pthread_mutex_t semaforo_listaNiveles = PTHREAD_MUTEX_INITIALIZER;
+
 #define IP "127.0.0.1";
 //------ TIPOS DE MENSAJES!!------
 #define ERROR_MENSAJE 0
@@ -245,13 +247,17 @@ int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje) {
 		mensaje->Payload = "0";
 		return 0;
 	}
+	pthread_mutex_lock(&semaforo_listaNiveles);
 	restarRecurso(itemsEnNivel,caja->id);
+	pthread_mutex_unlock(&semaforo_listaNiveles);
 	queue_push(personaje->recursosObtenidos,&caja->id);
 	return 0;
 }
 
 int realizarMovimiento(Posicion* posicion, Personaje* personaje) {
+	pthread_mutex_lock(&semaforo_listaNiveles);
 	MoverPersonaje(itemsEnNivel, *personaje->simbolo, posicion->x, posicion->y);
+	pthread_mutex_unlock(&semaforo_listaNiveles);
 	personaje->x = posicion->x;
 	personaje->y = posicion->y;
 	return 0;
@@ -280,7 +286,9 @@ ITEM_NIVEL* buscarCaja(char* id) {
 }
 
 int inicializarPersonaje(char* simbolo) {
+	pthread_mutex_lock(&semaforo_listaNiveles);
 	CrearPersonaje(&itemsEnNivel, *simbolo, 0, 0);
+	pthread_mutex_unlock(&semaforo_listaNiveles);
 	return EXIT_SUCCESS;
 }
 
