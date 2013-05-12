@@ -62,9 +62,12 @@ int socketNivel;
 //Tipos de mensaje a enviar
 #define UBICACION_CAJA 2 // Pide la ubicacion de la caja de recursos que necesita.
 #define AVISO_MOVIMIENTO 3 // Le avisa que se va a mover
-#define FINALIZAR 4 // Avisod el personaje que no tiene mas recursos que obtener, por ende termina el nivel
+#define FINALIZAR 4 // Avisa el personaje que no tiene mas recursos que obtener, por ende termina el nivel
 #define PEDIR_RECURSO 5
-
+#define LIBERAR_RECURSOS 6 // Le avisa que libere los recursos del personaje
+#define MUERTE_PERSONAJE 7 // Notifica la muerte del personaje
+#define BLOQUEO_PERSONAJE 8 // Notifica el bloqueo del personaje
+#define INGRESA_NIVEL 9 // Avisa que el personaje ingresa al nivel
 #define MOVIMIENTO_PERMITIDO 1
 
 int main(int argc, char *argv[]) {
@@ -118,7 +121,12 @@ void manejarSenial(int n) {
 }
 
 void notificarIngresoAlNivel(int socketNivel){
-
+	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
+	mensaje->PayloadDescriptor = INGRESA_NIVEL;
+	mensaje->PayLoadLength = sizeof(char);
+	mensaje->Payload = personaje->simbolo;
+	enviarMensaje(socketNivel,mensaje);
+	free(mensaje);
 }
 
 void consultarUbicacionCaja(char cajaABuscar, int socketNivel,Posicion* posicion){
@@ -130,6 +138,8 @@ void consultarUbicacionCaja(char cajaABuscar, int socketNivel,Posicion* posicion
 	enviarMensaje(socketNivel,mensaje);
 	recibirMensaje(socketNivel,mensajeARecibir);
 	posicion = mensajeARecibir->Payload;
+	free(mensaje);
+	free(mensajeARecibir);
 }
 
 int esperarConfirmacionDelPlanificador(int socketPlanificador){
@@ -137,7 +147,9 @@ int esperarConfirmacionDelPlanificador(int socketPlanificador){
 	recibirMensaje(socketPlanificador,mensaje);
 	if (mensaje->PayloadDescriptor == MOVIMIENTO_PERMITIDO){
 		return 1;
+		free(mensaje);
 	}
+	free(mensaje);
 	return 0;
 }
 void realizarMovimiento(int ubicacionEnNivelX, int ubicacionEnNivelY, Posicion* posicion,int socketNivel){
@@ -162,6 +174,8 @@ void realizarMovimiento(int ubicacionEnNivelX, int ubicacionEnNivelY, Posicion* 
 	mensaje->PayLoadLength = sizeof(Posicion);
 	mensaje->Payload = posicionNueva;
 	enviarMensaje(socketNivel,mensaje);
+	free(mensaje);
+	free(posicionNueva);
 }
 
 void movimientoRealizado(int socketPlanificador){
@@ -170,16 +184,27 @@ void movimientoRealizado(int socketPlanificador){
 	mensaje->PayLoadLength = sizeof(char);
 	mensaje->Payload = "3";
 	enviarMensaje(socketPlanificador,mensaje);
+	free(mensaje);
 }
 
 int pedirRecurso(char recursoAPedir, int socketNivel){
 	return 0;
 }
 void avisarDelBloqueo(int socketPlanificador){
-
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	mensajeAEnviar->PayloadDescriptor = BLOQUEO_PERSONAJE;
+	mensajeAEnviar->PayLoadLength = sizeof(char);
+	mensajeAEnviar->Payload = personaje->simbolo;
+	enviarMensaje(socketPlanificador, mensajeAEnviar);
+	free(mensajeAEnviar);
 }
 void nivelTerminado(int socketNivel){
-
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
+	mensajeAEnviar->PayLoadLength = strlen("Fin") + 1;
+	mensajeAEnviar->Payload = "Fin";
+	enviarMensaje(socketNivel, mensajeAEnviar);
+	free(mensajeAEnviar);
 }
 
 void recorrerNivel(int socketNivel, int socketPlanificador) {
@@ -349,7 +374,12 @@ void liberarRecursos(int socketNivel) {
 }
 
 void notificarMuerte(int socketPlanificador) {
-
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	mensajeAEnviar->PayloadDescriptor = MUERTE_PERSONAJE;
+	mensajeAEnviar->PayLoadLength = sizeof(char);
+	mensajeAEnviar->Payload = personaje->simbolo;
+	enviarMensaje(socketPlanificador,mensajeAEnviar);
+	free(mensajeAEnviar);
 }
 
 void finalizar() {
@@ -367,6 +397,7 @@ int avisarFinalizacion(int socketNivel, int socketPlanificador) {
 	mensajeAEnviar->Payload = "Fin";
 	enviarMensaje(socketNivel, mensajeAEnviar);
 	enviarMensaje(socketPlanificador, mensajeAEnviar);
+	free(mensajeAEnviar);
 	return 0;
 }
 
