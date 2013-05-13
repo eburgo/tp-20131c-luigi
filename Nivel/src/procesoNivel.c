@@ -39,17 +39,14 @@ int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int socketConPersonaje);
 int interactuarConPersonaje(int socketNuevaConexion);
 //En caso de que se ingrese un recurso qe no existe.
 int informarError(int socketConPersonaje);
-//Comprueba que la posición actual del personaje es la correcta
-int posicionPersonajeCorrecta(int socketConPersonaje);
 //Realiza el movimiento del Personaje
 int realizarMovimiento(Posicion* posicion, Personaje* personaje);
 //busca una caja en la lista de cajas del nivel
 ITEM_NIVEL* buscarCaja(char* cajaABuscar);
-// restar un recurso de la caja si el personaje se encuentra en la misma posicion de la caja.
-// y lo agrega en una lista de recursos pedidos por un personaje
-// Y si el recurso no esta entonces le envia un mensaje de que tiene que estar bloqueado porque no hay recurso y la puta madrew que te pario
-// Si esta el recurso le envia un mensaje que el recurso esta. :D :D :D
+// da un recurso si el nivel los tiene
 int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje);
+// Libera los recursos
+void liberarRecursos(Personaje* personaje);
 
 //Globales
 Nivel* nivel;
@@ -70,6 +67,9 @@ pthread_mutex_t semaforo_listaNiveles = PTHREAD_MUTEX_INITIALIZER;
 #define REGISTRAR_NIVEL 2
 #define SIN_RECURSOS 6
 #define POSICION_ERRONEA 7
+
+// A recibir
+#define MUERTE_PERSONAJE 7
 
 int main(int argc, char **argv) {
 	int *socketEscucha;
@@ -210,7 +210,12 @@ int interactuarConPersonaje(int socketConPersonaje) {
 		case PEDIR_RECURSO:
 			darRecurso(mensajeARecibir.Payload, personaje, socketConPersonaje);
 			break;
+		case MUERTE_PERSONAJE:
+			log_debug(logger, "El personaje ( %s ) murio, se procede a liberar recursos.",personaje->simbolo);
+			terminoElNivel = 1;
+			break;
 		case FINALIZAR:
+			log_debug(logger, "El personaje ( %s ) termino el nivel satisfactoriamente, se procede a liberar recursos.",personaje->simbolo);
 			terminoElNivel = 1;
 			log_debug(logger, "El personaje termino el nivel.");
 			break;
@@ -219,6 +224,9 @@ int interactuarConPersonaje(int socketConPersonaje) {
 			break;
 		}
 	}
+	liberarRecursos(personaje);
+	close(socketConPersonaje);
+	free(personaje);
 	return 0;
 }
 
@@ -251,6 +259,7 @@ int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje) {
 	restarRecurso(itemsEnNivel,caja->id);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
 	queue_push(personaje->recursosObtenidos,&caja->id);
+	free(mensaje);
 	return 0;
 }
 
@@ -274,6 +283,8 @@ int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int socketConPersonaje) 
 	mensajeAEnviar->Payload = posicion;
 	enviarMensaje(socketConPersonaje, mensajeAEnviar);
 	log_debug(logger, "Mensaje enviado con exito.");
+	free(posicion);
+	free(mensajeAEnviar);
 	return EXIT_SUCCESS;
 }
 
@@ -292,9 +303,15 @@ int inicializarPersonaje(char* simbolo) {
 	return EXIT_SUCCESS;
 }
 
+void liberarRecursos(Personaje* personaje){
+	while(!queue_is_empty(personaje->recursosObtenidos)){
+		char* recurso = queue_pop(personaje->recursosObtenidos);
+		pthread_mutex_lock(&semaforo_listaNiveles);
+		sumarRecurso(itemsEnNivel,*recurso);
+		pthread_mutex_unlock(&semaforo_listaNiveles);
+	}
+}
+
 void crearCajasInit(ITEM_NIVEL* item) {
 	CrearCaja(&itemsEnNivel, item->id, item->posx, item->posy, item->quantity);
-}
-int posicionPersonajeCorrecta(int socketConPersonaje) {
-	return 1;
 }
