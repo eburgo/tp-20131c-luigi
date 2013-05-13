@@ -146,8 +146,8 @@ int esperarConfirmacionDelPlanificador(int socketPlanificador){
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	recibirMensaje(socketPlanificador,mensaje);
 	if (mensaje->PayloadDescriptor == MOVIMIENTO_PERMITIDO){
-		return 1;
 		free(mensaje);
+		return 1;
 	}
 	free(mensaje);
 	return 0;
@@ -201,8 +201,8 @@ void avisarDelBloqueo(int socketPlanificador){
 void nivelTerminado(int socketNivel){
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
-	mensajeAEnviar->PayLoadLength = strlen("Fin") + 1;
-	mensajeAEnviar->Payload = "Fin";
+	mensajeAEnviar->PayLoadLength = sizeof(char);
+	mensajeAEnviar->Payload = "F";
 	enviarMensaje(socketNivel, mensajeAEnviar);
 	free(mensajeAEnviar);
 }
@@ -393,8 +393,8 @@ void finalizar() {
 int avisarFinalizacion(int socketNivel, int socketPlanificador) {
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
-	mensajeAEnviar->PayLoadLength = strlen("Fin") + 1;
-	mensajeAEnviar->Payload = "Fin";
+	mensajeAEnviar->PayLoadLength = sizeof(char);
+	mensajeAEnviar->Payload = "F";
 	enviarMensaje(socketNivel, mensajeAEnviar);
 	enviarMensaje(socketPlanificador, mensajeAEnviar);
 	free(mensajeAEnviar);
