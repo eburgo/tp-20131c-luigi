@@ -43,6 +43,11 @@ typedef struct nivelDatos {
 	int puerto;
 } __attribute__((__packed__)) NivelDatos;
 
+typedef struct posicion {
+	int x; // Ubicacion H en el eje coordenadas
+	int y; // Ubicacion S en el eje coordenadas ;)
+} __attribute__((__packed__)) Posicion;
+
 typedef struct _MPS_MSG
 {
  int8_t PayloadDescriptor;
