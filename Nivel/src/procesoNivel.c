@@ -124,6 +124,7 @@ int main(int argc, char **argv) {
 	pthread_join(hiloOrquestador, NULL );
 	pthread_join(hiloPersonajes, NULL );
 
+	free(socketEscucha);
 	close(socketOrquestador);
 	close(*socketEscucha);
 	log_destroy(logger);
@@ -147,6 +148,7 @@ int conectarConOrquestador(int miPuerto) {
 		return EXIT_FAILURE;
 	}
 	enviarMensaje(socketOrquestador, &mensajeAEnviar);
+	free(nivelDatos);
 	return socketOrquestador;
 }
 
@@ -176,7 +178,10 @@ int comunicarPersonajes(int socketEscucha) {
 		queue_push(colaHilos, thread);
 	}
 	// recibir una señal para cortar el ciclo-
-
+	while(!queue_is_empty(colaHilos)){
+		thread = queue_pop(colaHilos);
+		free(thread);
+	}
 	return 0;
 }
 int interactuarConPersonaje(int socketConPersonaje) {
