@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
 	pthread_create(&hiloOrquestador, NULL, (void*) detectarInterbloqueos,
 			&socketOrquestador);
 	pthread_create(&hiloPersonajes, NULL, (void*) comunicarPersonajes,
-			&socketEscucha);
+			socketEscucha);
 
 	pthread_join(hiloOrquestador, NULL );
 	pthread_join(hiloPersonajes, NULL );
@@ -156,7 +156,7 @@ int detectarInterbloqueos(int* socketOrquestador) {
 	return 0;
 }
 
-int comunicarPersonajes(int socketEscucha) {
+int comunicarPersonajes(int *socketEscucha) {
 	int *socketConPersonaje;
 	pthread_t *thread;
 	t_queue *colaHilos = queue_create();
@@ -164,7 +164,8 @@ int comunicarPersonajes(int socketEscucha) {
 	while (1) {
 		thread = malloc(sizeof(pthread_t));
 		socketConPersonaje = malloc(sizeof(int));
-		if ((*socketConPersonaje = accept(socketEscucha, NULL, 0)) < 0) {
+		log_info(logger, "Esperando conexiones de personajes.");
+		if ((*socketConPersonaje = accept(*socketEscucha, NULL, 0)) < 0) {
 			perror("Error al aceptar conexion entrante");
 			return EXIT_FAILURE;
 

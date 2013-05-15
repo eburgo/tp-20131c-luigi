@@ -44,7 +44,7 @@ int iniciarPlanificador(void* nombreNivel) {
 	socketEscucha = malloc(sizeof(int));
 	log_debug(logger, "Se inicia la conexion de escucha del planificador.");
 	planificador->puerto = realizarConexion(socketEscucha);
-	log_debug(logger, "Conexion de escucha en socket:%d , puerto:%d.",socketEscucha,planificador->puerto);
+	log_debug(logger, "Conexion de escucha en socket:%d , puerto:%d.",*socketEscucha,planificador->puerto);
 	planificador->nombreNivel = (char*) nombreNivel;
 	planificador->ip = "127.0.0.1"; //todavia no se como conseguirla
 	planificador->personajes = list_create();

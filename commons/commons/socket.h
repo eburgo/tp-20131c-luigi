@@ -71,7 +71,7 @@ int enviarInfo(int Socket, buffer_t Buffer, int CantidadAEnviar);
 t_stream* nivelConexion_serializer(NivelConexion *self);
 NivelConexion* nivelConexion_desserializer(t_stream *stream);
 t_stream* NivelDatos_serializer(NivelDatos *self);
-NivelDatos* NivelDatos_desserializer(t_stream *stream);
+NivelDatos* NivelDatos_desserializer(char* stream);
 
 // Inicia el servidor y devuelve el puerto asignado aleatoreamente.
 int realizarConexion(int* socketEscucha);

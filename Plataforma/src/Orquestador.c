@@ -44,13 +44,14 @@ int iniciarOrquestador() {
 	log_debug(logger, "se va a iniciar el servidor");
 	socketEscucha = iniciarServidor(PUERTO);
 	log_debug(logger, "servidor escuchando en socket:%d y puerto:%d\n",socketEscucha,PUERTO);
-	printf("Escuchando conexiones entrantes.\n");
+
 
 // Aceptar una nueva conexion entrante. Se genera un nuevo socket con la nueva conexion.
 	while (1) {
 		thread = malloc(sizeof(pthread_t));
 		socketNuevaConexion = malloc(sizeof(int));
-
+		printf("Escuchando conexiones entrantes.\n");
+		log_debug(logger, "servidor escuchando.");
 		if ((*socketNuevaConexion = accept(socketEscucha, NULL, 0)) < 0) {
 			log_error(logger, "Error al aceptar una conexión.");
 			perror("Error al aceptar conexion entrante");
@@ -157,10 +158,11 @@ int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion) {
 	pthread_mutex_lock( &semaforo_niveles);
 	nivel=(Nivel*)dictionary_get(niveles,nombre);
 	pthread_mutex_unlock( &semaforo_niveles);
-	log_debug(logger, "Nivel ok.");
+
 
 	if(nivel==NULL)
 		return -1;
+	log_debug(logger, "Nivel ok.");
 	log_debug(logger, "Se busca el planificador.");
 	pthread_mutex_lock( &semaforo_planificadores);
 	planificador=(Planificador*)dictionary_get(planificadores,nombre);

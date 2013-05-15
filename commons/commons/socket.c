@@ -252,21 +252,21 @@ t_stream* NivelDatos_serializer(NivelDatos* self) {
 	return stream;
 }
 
-NivelDatos* NivelDatos_desserializer(t_stream *stream) {
+NivelDatos* NivelDatos_desserializer(char *stream) {
 	NivelDatos* self = malloc(sizeof(NivelDatos));
 	int offset = 0, tmp_size = 0;
 
-	for (tmp_size = 1; (stream->data)[tmp_size - 1] != '\0'; tmp_size++);
+	for (tmp_size = 1; (stream)[tmp_size - 1] != '\0'; tmp_size++);
 	self->nombre = malloc(tmp_size);
-	memcpy(self->ip, stream->data, tmp_size);
+	memcpy(self->nombre, stream, tmp_size);
 
 	offset = tmp_size;
 
-	for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';tmp_size++);
+	for (tmp_size = 1; (stream+ offset)[tmp_size - 1] != '\0';tmp_size++);
 	self->ip = malloc(tmp_size);
-	memcpy(self->ip, stream->data + offset, tmp_size);
+	memcpy(self->ip, stream + offset, tmp_size);
 
-	memcpy(&self->puerto, stream->data + offset, tmp_size = sizeof(int));
+	memcpy(&self->puerto, stream + offset, tmp_size = sizeof(int));
 
 	return self;
 }
