@@ -75,7 +75,7 @@ int socketNivel;
 
 int main(int argc, char *argv[]) {
 
-	logger = log_create("/home/utnso/personaje.log", "TEST", true,
+	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true,
 			LOG_LEVEL_TRACE);
 	log_info(logger,
 			"Log creado con exito, se procede a loguear el proceso Personaje");
@@ -353,7 +353,14 @@ int recorrerNiveles(int socketOrquestador) {
 	while (!queue_is_empty(personaje->listaNiveles)) {
 
 		log_debug(logger, "Pidiendo el proximo nivel para realizar");
-		NivelConexion* nivelConexion = pedirNivel(personaje, socketOrquestador);
+		t_stream* stream = pedirNivel(personaje, socketOrquestador);
+
+		if(stream->length == 0){
+			log_error(logger, "El nivel no se encontro, se procede a terminar el proceso del personaje (%s)",personaje->nombre);
+			return EXIT_FAILURE;
+		}
+
+		NivelConexion*nivelConexion = nivelConexion_desserializer(stream);
 
 		log_debug(logger,
 				"Conectando al planificador en el puerto:%d. Y la ip:%s",

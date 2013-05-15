@@ -37,109 +37,96 @@ int iniciarOrquestador() {
 	niveles = dictionary_create();
 	planificadores = dictionary_create();
 
-	logger = log_create("/home/utnso/orquestador.log", "TEST", true,
+	logger = log_create("/home/utnso/orquestador.log", "ORQUESTADOR", true,
 			LOG_LEVEL_TRACE);
-	log_info(logger, "Log creado con exito");
 
-	log_debug(logger, "se va a iniciar el servidor");
+	log_debug(logger, "Iniciando servidor...");
 	socketEscucha = iniciarServidor(PUERTO);
-	log_debug(logger, "servidor escuchando en socket:%d y puerto:%d\n",socketEscucha,PUERTO);
+	log_debug(logger, "Servidor escuchando en el puerto (%d)",PUERTO);
 
-
-// Aceptar una nueva conexion entrante. Se genera un nuevo socket con la nueva conexion.
 	while (1) {
 		thread = malloc(sizeof(pthread_t));
 		socketNuevaConexion = malloc(sizeof(int));
-		printf("Escuchando conexiones entrantes.\n");
-		log_debug(logger, "servidor escuchando.");
+		log_debug(logger, "El servidor esta esperando conexiones.");
 		if ((*socketNuevaConexion = accept(socketEscucha, NULL, 0)) < 0) {
 			log_error(logger, "Error al aceptar una conexión.");
-			perror("Error al aceptar conexion entrante");
 			return EXIT_FAILURE;
 		}
-		log_info(logger, "Se acepto una conexion correctamente.");
-		log_debug(logger, "se crea un hilo para manejar la conexion.");
+		log_debug(logger, "Conexion aceptada. se crea un hilo para manejar la conexion con el socket (%d)",*socketNuevaConexion);
 		pthread_create(thread, NULL, (void*) manejarConexion,
 				socketNuevaConexion);
-		log_debug(logger, "hilo iniciado.");
 	}
 
 	close(socketEscucha);
-	log_info(logger, "Se serro el socket de escuchar de la plataforma.");
+	log_info(logger, "Se cerro el socket de escuchar de la plataforma.");
 	log_destroy(logger);
 	return EXIT_SUCCESS;
 }
 
 void manejarConexion(int* socket) {
 	MPS_MSG mensaje;
-	log_debug(logger, "Bloqueado esperando un msj");
+	log_debug(logger, "Socket (%d) - Esperando mensaje inicializador ( Personaje o Nivel )",*socket);
 	recibirMensaje(*socket, &mensaje);
 	log_info(logger, "Se recibio un mensaje tipo: %d",
 			mensaje.PayloadDescriptor);
 	switch (mensaje.PayloadDescriptor) {
 
 	case REGISTRAR_NIVEL:
-		log_info(logger, "Se conecto un nivel");
-		log_debug(logger, "Se va a deserializar el msj.");
+		log_info(logger, "Socket (%d) - Se conecto un nivel",*socket);
+		log_debug(logger, "Socket (%d) - Desserializando mensaje.",*socket);
 		NivelDatos *nivelDatos = NivelDatos_desserializer(mensaje.Payload);
-		log_debug(logger, "Se va a registrar el nivel.");
+		log_debug(logger, "Socket (%d) - Se va a registrar el nivel.",*socket);
 		registrarNivel(nivelDatos, *socket);
-		log_debug(logger, "se va a iniciar un planificador");
+		log_debug(logger, "Socket (%d) - Iniciando planificador del nivel (%s)",*socket,nivelDatos->nombre);
 		iniciarUnPlanificador(nivelDatos->nombre);
-
-		log_info(logger, "Se creo un hilo para planificar para ese nivel");
-
+		log_info(logger, "Socket (%d) - Hilo del nivel (%s) generado con exito",*socket,nivelDatos->nombre);
 		break;
 	case PJ_PIDE_NIVEL:
-
-		log_info(logger, "Se conecto un personaje.");
+		log_info(logger, "Socket (%d) - Se conecto un Personaje",*socket);
 		NivelConexion *nivel = malloc(sizeof(NivelConexion));
 		char* nombreNivel = (char*) mensaje.Payload;
-		log_debug(logger, "Se van a preparar los datos del Nivel: %c",nombreNivel);
+		log_debug(logger, "Socket (%d) - Se van a preparar los datos del Nivel (%s)",*socket,nombreNivel);
 		int resultado=prepararNivelConexion(nombreNivel, nivel);
 
 		if (resultado == -1){
-			log_error(logger, "no esta el nivel");
-			enviarMsjError(socket,"no esta el nivel");
+			log_error(logger, "Socket (%d) - Nivel no encontrado",*socket);
+			enviarMsjError(socket,"Nivel no encontrado");
 			break;
 		}
 		if (resultado == -2) {
-			log_error(logger, "no esta el planificador.");
-			enviarMsjError(socket,"no esta el planificador");
+			log_error(logger, "Socket (%d) - Planificador no encontrado",*socket);
+			enviarMsjError(socket,"No esta el planificador");
 			break;
 		}
-		log_debug(logger, "Se van a serializar los datos del Nivel: %c.",nombreNivel);
+		log_debug(logger, "Socket (%d) - Serializando mensaje a enviar con el Nivel: (%s)",*socket,nombreNivel);
 		t_stream *stream = nivelConexion_serializer(nivel);
-		log_debug(logger, "Asignamos los datos serializados en el msj.");
 		mensaje.PayloadDescriptor=PJ_PIDE_NIVEL;
 		mensaje.PayLoadLength=stream->length;
 		mensaje.Payload=stream->data;
-		log_debug(logger, "Se va a enviar el msj.");
+		log_error(logger, "Socket (%d) - Enviando mensaje con info del nivel",*socket);
 		enviarMensaje(*socket, &mensaje);
-		log_debug(logger, "mensajeEnviado.");
+		log_error(logger, "Socket (%d) - Info enviada con exito",*socket);
+		free(nivel);
 		break;
 	default:
 		log_error(logger, "Tipo de mensaje desconocido.");
 		enviarMsjError(socket, "Tipo de mensaje desconocido.");
 		break;
 	}
+	close(*socket);
 }
 
 void enviarMsjError(int *socket, char* msjError) {
 	MPS_MSG respuestaError;
-	log_debug(logger, "Se prepara msj de error.");
 	respuestaError.PayloadDescriptor = ERROR_MENSAJE;
 	respuestaError.PayLoadLength = strlen("msjError") + 1;
-	respuestaError.Payload = "msjError";
-	log_debug(logger, "Se va a enviar el msj de error.");
+	respuestaError.Payload = msjError;
 	enviarMensaje(*socket, &respuestaError);
-	log_debug(logger, "Msj enviado correctamente.");
 }
 
 int registrarNivel(NivelDatos *nivelDatos, int socket) {
-
+	log_info(logger, "Socket (%d) - Registrando nivel...",socket);
 	Nivel* nivel = malloc(sizeof(Nivel));
-	log_debug(logger, "Se va encolar el nivel.");
 	nivel->ip = nivelDatos->ip;
 	nivel->nombre = nivelDatos->nombre;
 	nivel->puerto = nivelDatos->puerto;
@@ -147,7 +134,7 @@ int registrarNivel(NivelDatos *nivelDatos, int socket) {
 	pthread_mutex_lock( &semaforo_niveles);
 	dictionary_put(niveles, nivel->nombre, nivel);
 	pthread_mutex_unlock( &semaforo_niveles);
-	log_debug(logger, "Nivel encolado.");
+	log_info(logger, "Socket (%d) - Registro completo!",socket);
 	return 0;
 }
 

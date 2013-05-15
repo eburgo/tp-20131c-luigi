@@ -72,8 +72,7 @@ Nivel* verProximoNivel(Personaje *pj) {
 	return (queue_peek(pj->listaNiveles));
 }
 
-NivelConexion* pedirNivel(Personaje* personaje, int socketOrquestador) {
-	NivelConexion* nivelConexion;
+t_stream* pedirNivel(Personaje* personaje, int socketOrquestador) {
 	MPS_MSG mensajeAEnviar, mensajeARecibir;
 	Nivel* proximoNivel = verProximoNivel(personaje);
 	mensajeAEnviar.PayloadDescriptor = 1;
@@ -86,12 +85,14 @@ NivelConexion* pedirNivel(Personaje* personaje, int socketOrquestador) {
 		respondioMensaje = recibirMensaje(socketOrquestador, &mensajeARecibir);
 	}
 	t_stream* stream = malloc(sizeof(t_stream));
+	if(mensajeARecibir.PayloadDescriptor == 0){
+		stream->length = 0;
+		return stream;
+	}
 	stream->length = mensajeARecibir.PayLoadLength;
 	stream->data = mensajeARecibir.Payload;
-	nivelConexion = nivelConexion_desserializer(stream);
-
 	close(socketOrquestador);
-	return nivelConexion;
+	return stream;
 }
 
 

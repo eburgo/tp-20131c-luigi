@@ -53,4 +53,4 @@ Nivel* verProximoNivel(Personaje *pj);
  * Devuelve una struct de NivelConexion con las ip y puertos
  * del planificador y del nivel.
  */
-NivelConexion* pedirNivel(Personaje *personaje,int socketOrquestador);
+t_stream* pedirNivel(Personaje *personaje,int socketOrquestador);
