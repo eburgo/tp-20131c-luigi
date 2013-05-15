@@ -80,7 +80,7 @@ void agregarmeEnPlanificadores(Planificador* planificador) {
 	pthread_mutex_lock(&semaforo_planificadores);
 	dictionary_put(planificadores, planificador->nombreNivel,
 			(void*) planificador);
-	pthread_mutex_lock(&semaforo_planificadores);
+	pthread_mutex_unlock(&semaforo_planificadores);
 }
 
 int notificarMovimientoPermitido(int socketPersonaje) {
