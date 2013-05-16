@@ -1,5 +1,6 @@
 #include "Orquestador.h"
 #include "structs.h"
+#include <commons/config.h>
 
 #define MOVIMIENTO_PERMITIDO 1
 #define MOVIMIENTO_FINALIZADO 3

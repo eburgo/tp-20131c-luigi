@@ -16,13 +16,15 @@
 
 void recibirPersonaje(int *socket);// cuando llega una conexion se lo mete en la cola
 void dirigirMovimientos();//se va dandole permisos a los personajes en base a la cola q tenemos. En un hilo aparte!
+void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion);
 t_queue *personajesListos;
 int cantPersonajes = 0;
 Planificador *planificador;
 
 extern t_dictionary *planificadores;
 extern pthread_mutex_t semaforo_planificadores;
-int quantumDefault = 10;
+int quantumDefault=0;
+int tiempoAccion=0;
 pthread_mutex_t semaforo_listos = PTHREAD_MUTEX_INITIALIZER;
 
 
@@ -40,9 +42,9 @@ int iniciarPlanificador(void* nombreNivel) {
 	int *socketNuevaConexion;
 	pthread_t *thread;
 	personajesListos = queue_create();
-
-	//inicializarQuantum();
-
+	log_debug(loggerPlanificador, "Levantando configuracion de planificadores.");
+	levantarConfiguracion("/home/utnso/git/tp-20131c-luigi/Plataforma/Planificador.config", &quantumDefault,&tiempoAccion);
+	log_debug(loggerPlanificador, "El quantum se definio a:%d segundos, el tiempo entre cada acción a:%d segundos", quantumDefault, tiempoAccion);
 	socketEscucha = malloc(sizeof(int));
 	log_debug(loggerPlanificador, "Se inicia la conexion de escucha del planificador.");
 	planificador->puerto = realizarConexion(socketEscucha);
@@ -160,6 +162,15 @@ void dirigirMovimientos() {
 			return;
 
 		}
+		sleep(tiempoAccion);
 	}
+}
+
+void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion){
+	t_config *config = config_create(path);
+	*tiempoAccion = atoi(config_get_string_value(config, "tiempoAccion"));
+	*quantum = atoi(config_get_string_value(config, "quantum"));
+	config_destroy(config);
+
 }
 
