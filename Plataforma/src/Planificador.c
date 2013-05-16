@@ -22,7 +22,7 @@ Planificador *planificador;
 
 extern t_dictionary *planificadores;
 extern pthread_mutex_t semaforo_planificadores;
-int quantumDefault = 2;
+int quantumDefault = 10;
 pthread_mutex_t semaforo_listos = PTHREAD_MUTEX_INITIALIZER;
 
 
@@ -102,7 +102,7 @@ void recibirPersonaje(int* socket) {
 	personaje->simbolo = *(char*)mensajeInicializar.Payload;
 	personaje->socket = *socket;
 	personaje->quantum = quantumDefault;
-	log_debug(loggerPlanificador, "Encolamos el personaje.");
+	log_debug(loggerPlanificador, "Encolamos el personaje(%c).",*(char*)mensajeInicializar.Payload);
 	pthread_mutex_lock(&semaforo_listos);
 	cantPersonajes++;
 	queue_push(personajesListos, personaje);
@@ -112,10 +112,15 @@ void recibirPersonaje(int* socket) {
 void dirigirMovimientos() {
 	Personaje *pj;
 	MPS_MSG respuesta;
+	int loggearEsperando=1;
 	while (1) {
-		log_debug(loggerPlanificador, "Mientras la cola de personajes este vacia, esperamos.");
-		while (queue_is_empty(personajesListos))
+		while (queue_is_empty(personajesListos)){
+			if(loggearEsperando){
+				log_debug(loggerPlanificador, "Mientras la cola de personajes este vacia, esperamos.");
+				loggearEsperando=0;
+			}
 			sleep(1);
+		}
 		log_debug(loggerPlanificador, "Tomamos el primer personaje de la cola.");
 		pj = queue_peek(personajesListos);
 		log_debug(loggerPlanificador, "Le notificamos el movimiento permitido.");
@@ -126,7 +131,7 @@ void dirigirMovimientos() {
 		log_debug(loggerPlanificador, "Respuesta recibida:%c.",*(char*)respuesta.Payload);
 		switch (respuesta.PayloadDescriptor) {
 		case MOVIMIENTO_FINALIZADO:
-			log_debug(loggerPlanificador, "El quantum del pj es:%d.",pj->quantum);
+			log_debug(loggerPlanificador, "El quantum del pj (%c) es:%d.",pj->simbolo,pj->quantum);
 			if(pj->quantum==0){
 				log_debug(loggerPlanificador, "se saca el personaje de la cola.");
 				queue_pop(personajesListos);

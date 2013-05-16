@@ -2,8 +2,8 @@
 #include "structs.h"
 
 #define MOVIMIENTO_PERMITIDO 1
-#define MOVIMIENTO_FINALIZADO 2
-#define BLOQUEADO 3
+#define MOVIMIENTO_FINALIZADO 3
+#define BLOQUEADO 8
 #define NIVEL_FINALIZADO 4
 void agregarmeEnPlanificadores(Planificador* planificador);
 int iniciarPlanificador(void* nombreNivel);
