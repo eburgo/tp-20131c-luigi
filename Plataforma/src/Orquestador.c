@@ -134,12 +134,12 @@ int registrarNivel(NivelDatos *nivelDatos, int socket) {
 	pthread_mutex_lock( &semaforo_niveles);
 	dictionary_put(niveles, nivel->nombre, nivel);
 	pthread_mutex_unlock( &semaforo_niveles);
-	log_info(loggerOrquestador, "Socket (%d) - Registro completo del nivel (%s)",socket,nivel->nombre);
+	log_info(loggerOrquestador, "Socket (%d) - Registro completo del nivel (%s,puerto:%d,ip:%s)",socket,nivel->nombre,nivel->puerto,nivel->ip);
 	return 0;
 }
 
-int prepararNivelConexion(char* nombreSinEspacio, NivelConexion *nivelConexion) {
-	char* nombre = strcat(nombreSinEspacio," ");
+int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion) {
+
 	Nivel *nivel = malloc(sizeof(Nivel));
 	Planificador *planificador = malloc(sizeof(Planificador));
 	log_debug(loggerOrquestador, "Se busca el nivel (%s)",nombre);
