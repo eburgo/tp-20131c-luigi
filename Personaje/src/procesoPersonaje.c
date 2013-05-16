@@ -218,6 +218,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	int ubicacionEnNivelX = 0;
 	int ubicacionEnNivelY = 0;
 	notificarIngresoAlNivel(socketNivel);
+	notificarIngresoAlNivel(socketPlanificador);
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)",
 			personaje->nombre, nivel->nombre);
 	while (!queue_is_empty(nivel->objetos)) {
