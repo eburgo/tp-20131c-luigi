@@ -43,6 +43,7 @@ Personaje* levantarConfiguracion(char *rutaArchivo) {
 	personaje->ip = strsep(&ipCompleta, ":");
 	personaje->puerto = atoi(ipCompleta);
 
+	config_destroy(config);
 	return personaje;
 }
 /*

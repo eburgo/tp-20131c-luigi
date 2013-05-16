@@ -158,9 +158,6 @@ int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion) {
 	log_debug(loggerOrquestador, "Se va a armar la struct de NivelConexion con los datos del nivel (%s)",nombre);
 	armarNivelConexion(nivelConexion,nivel,planificador);
 	return 0;
-
-
-return 0;
 }
 void armarNivelConexion(NivelConexion *nivelConexion,Nivel *nivel,Planificador *planificador){
 	nivelConexion->ipNivel=nivel->ip;
