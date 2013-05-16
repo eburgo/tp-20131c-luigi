@@ -247,7 +247,6 @@ t_stream* NivelDatos_serializer(NivelDatos* self) {
 	offset += tmp_size;
 
 	stream->length = offset;
-	printf("  cacacacacaca el puerto es (%d) \n \n \n ",offset);
 	stream->data = data;
 
 	return stream;
@@ -261,13 +260,11 @@ NivelDatos* NivelDatos_desserializer(char *stream) {
 	self->nombre = malloc(tmp_size);
 	memcpy(self->nombre, stream, tmp_size);
 	offset = tmp_size;
-	printf("offset: %d!!!!!!!!!!!!!1 \n\n\n",offset);
 	for (tmp_size = 1; (stream+ offset)[tmp_size - 1] != '\0';tmp_size++);
 	self->ip = malloc(tmp_size);
 	memcpy(self->ip, stream + offset, tmp_size);
 
 	offset += tmp_size;
-	printf("offset: %d!!!!!!!!!!!!!1 \n\n\n",offset);
 	memcpy(&self->puerto, stream + offset, tmp_size = sizeof(int));
 
 	return self;
