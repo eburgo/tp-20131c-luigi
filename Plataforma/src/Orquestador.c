@@ -23,7 +23,8 @@ t_dictionary *niveles;
 //t_queue *personajesBloqueados;
 
 t_log* loggerOrquestador;
-
+int quantumDefault=2;
+int tiempoAccion=2;
 
 
 // PROTOTIPOS
@@ -167,8 +168,22 @@ void armarNivelConexion(NivelConexion *nivelConexion,Nivel *nivel,Planificador *
 }
 
 int iniciarUnPlanificador(char* nombreNivel) {
+	log_debug(loggerOrquestador,"Creando planificador para el (%s)",nombreNivel);
+	int *socketEscucha;
+	socketEscucha = malloc(sizeof(int));
 	pthread_t* thread = malloc(sizeof(pthread_t));
-	pthread_create(thread, NULL, (void*) iniciarPlanificador, (void*) nombreNivel);
+	Planificador *planificador= malloc(sizeof(Planificador));
+	planificador->nombreNivel=nombreNivel;
+	planificador->ip="127.0.0.1";
+	planificador->puerto=realizarConexion(socketEscucha);
+	planificador->socketEscucha=*socketEscucha;
+	planificador->bloqueados=list_create();
+	planificador->personajes=list_create();
+	pthread_mutex_lock(&semaforo_planificadores);
+	dictionary_put(planificadores,planificador->nombreNivel,planificador);
+	pthread_mutex_unlock(&semaforo_planificadores);
+	log_debug(loggerOrquestador,"(%s) creado, escuchando en socket (%d)",nombreNivel,planificador->socketEscucha);
+	pthread_create(thread, NULL, (void*) iniciarPlanificador, (void*)planificador);
 	return 0;
 }
 

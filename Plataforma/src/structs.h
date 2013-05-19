@@ -1,5 +1,6 @@
 #include <commons/collections/dictionary.h>
 #include <commons/collections/list.h>
+#include <commons/collections/queue.h>
 //estructuras
 typedef struct{
 	char* nombre;
@@ -11,9 +12,12 @@ typedef struct{
 typedef struct{
 	char* nombreNivel; //nivel q planifica... se entiende no?
 	char* ip;
+	int socketEscucha;
 	int puerto;
 	t_list *bloqueados;
 	t_list *personajes; //por orden de llegada para saber cual matar en caso de bloqueo
+	t_queue *listos; //cola de listos
+
 }__attribute__((__packed__)) Planificador;
 
 typedef struct{
