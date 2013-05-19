@@ -73,24 +73,27 @@ Nivel* verProximoNivel(Personaje *pj) {
 }
 
 t_stream* pedirNivel(Personaje* personaje, int socketOrquestador) {
-	MPS_MSG mensajeAEnviar, mensajeARecibir;
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
 	Nivel* proximoNivel = verProximoNivel(personaje);
-	mensajeAEnviar.PayloadDescriptor = 1;
-	mensajeAEnviar.Payload = proximoNivel->nombre;
-	mensajeAEnviar.PayLoadLength = strlen(proximoNivel->nombre);
-	enviarMensaje(socketOrquestador, &mensajeAEnviar);
+	mensajeAEnviar->PayloadDescriptor = 1;
+	mensajeAEnviar->Payload = proximoNivel->nombre;
+	mensajeAEnviar->PayLoadLength = strlen(proximoNivel->nombre);
+	enviarMensaje(socketOrquestador, mensajeAEnviar);
 
 	int respondioMensaje = -1;
 	while (respondioMensaje == -1) {
-		respondioMensaje = recibirMensaje(socketOrquestador, &mensajeARecibir);
+		respondioMensaje = recibirMensaje(socketOrquestador, mensajeARecibir);
 	}
 	t_stream* stream = malloc(sizeof(t_stream));
-	if(mensajeARecibir.PayloadDescriptor == 0){
+	if(mensajeARecibir->PayloadDescriptor == 0){
 		stream->length = 0;
 		return stream;
 	}
-	stream->length = mensajeARecibir.PayLoadLength;
-	stream->data = mensajeARecibir.Payload;
+	stream->length = mensajeARecibir->PayLoadLength;
+	stream->data = mensajeARecibir->Payload;
+	free(mensajeAEnviar);
+	free(mensajeARecibir);
 	close(socketOrquestador);
 	return stream;
 }

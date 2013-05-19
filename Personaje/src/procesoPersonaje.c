@@ -73,6 +73,7 @@ int socketNivel;
 #define BLOQUEO_PERSONAJE 8 // Notifica el bloqueo del personaje
 #define INGRESA_NIVEL 9 // Avisa que el personaje ingresa al nivel
 #define MOVIMIENTO_PERMITIDO 1
+#define DESBLOQUEAR 5
 #define SIN_RECURSOS 6
 #define CON_RECURSOS 7
 
@@ -136,7 +137,7 @@ void notificarIngresoAlNivel(int socketNivel) {
 }
 
 void consultarUbicacionCaja(char cajaABuscar, int socketNivel,
-		Posicion* posicion) {
+	Posicion* posicion) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
 	mensaje->PayloadDescriptor = UBICACION_CAJA;
@@ -205,7 +206,8 @@ int pedirRecurso(char recursoAPedir, int socketNivel) {
 	mensaje->Payload = &recursoAPedir;
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel,mensaje);
-	if(mensaje->PayloadDescriptor == CON_RECURSOS){
+	if(mensaje->PayloadDescriptor == SIN_RECURSOS){
+		log_debug(logger,"El recurso (%s) se otorgo satisfactoriamente",recursoAPedir);
 		free(mensaje);
 		return 0;
 	}
@@ -304,9 +306,13 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual) {
 
 void esperarDesbloqueo(int socketPlanificador) {
 	MPS_MSG mensajeARecibir;
-	recibirMensaje(socketPlanificador, &mensajeARecibir);
-	log_debug(logger,"Se recibe:(%d)",mensajeARecibir.PayloadDescriptor);
-	log_debug(logger,"mensaje: (%s)",mensajeARecibir.Payload);
+	int bloqueado = 1;
+	while(bloqueado){
+		recibirMensaje(socketPlanificador, &mensajeARecibir);
+		if(mensajeARecibir.PayloadDescriptor == DESBLOQUEAR){
+			bloqueado = 0;
+		}
+	}
 }
 
 int perderVida() {
