@@ -44,6 +44,5 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 	char *ipCompleta = config_get_string_value(config, "orquestador");
 	nivel->ip = strsep(&ipCompleta, ":");
 	nivel->puerto = atoi(ipCompleta);
-	config_destroy(config);
 	return nivel;
 }

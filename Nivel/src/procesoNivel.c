@@ -191,15 +191,12 @@ int interactuarConPersonaje(int socketConPersonaje) {
 	MPS_MSG mensajeInicializar;
 	Personaje* personaje = malloc(sizeof(Personaje));
 
-	int recibioMensaje = -1;
 
-	while (recibioMensaje == -1) {
-		recibirMensaje(socketConPersonaje, &mensajeInicializar);
-	}
-
+	recibirMensaje(socketConPersonaje, &mensajeInicializar);
+	log_debug(logger, "Se recibio mensaje de inicializacion.%s",mensajeInicializar.Payload);
 	personaje->simbolo = mensajeInicializar.Payload;
 	inicializarPersonaje(personaje->simbolo);
-
+	log_debug(logger, "Personaje inicializado correctamente: ");
 	while (terminoElNivel == 0) {
 		recibirMensaje(socketConPersonaje, &mensajeARecibir);
 

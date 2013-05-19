@@ -54,6 +54,9 @@ void nivelTerminado(int socketNivel);
 // Retorna 1 si el personaje esta en la ubicacion de la caja que necesita.
 int estaEnPosicionDeLaCaja(Posicion* posicion, int ubicacionEnNivelX,
 		int ubicacionEnNivelY);
+// Espera la confirmacion.
+void esperarConfirmacion(int socket);
+
 
 //Globales
 Personaje* personaje;
@@ -218,7 +221,9 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	int ubicacionEnNivelX = 0;
 	int ubicacionEnNivelY = 0;
 	notificarIngresoAlNivel(socketNivel);
+	esperarConfirmacion(socketNivel);
 	notificarIngresoAlNivel(socketPlanificador);
+	esperarConfirmacion(socketPlanificador);
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)",
 			personaje->nombre, nivel->nombre);
 	while (!queue_is_empty(nivel->objetos)) {
@@ -405,6 +410,11 @@ void liberarRecursos() {
 	mensajeAEnviar->Payload = personaje->simbolo;
 	enviarMensaje(socketNivel, mensajeAEnviar);
 	free(mensajeAEnviar);
+}
+
+void esperarConfirmacion(int socket) {
+	MPS_MSG mensajeARecibir;
+	recibirMensaje(socket, &mensajeARecibir);
 }
 
 void notificarMuerte() {
