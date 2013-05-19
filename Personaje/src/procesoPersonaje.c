@@ -22,7 +22,7 @@ int perderVida();
 // Conectar al orquestador, devuelve el socketOrquestador, y si hay error devuelve 1.
 int conectarAlOrquestador();
 // Recorre la lista de niveles del personaje.
-int recorrerNiveles(int socketOrquestador);
+int recorrerNiveles();
 // Le avisa al nivel que libere los recursos
 void liberarRecursos();
 // Le notifica al planificador que se murio el personaje.
@@ -222,12 +222,12 @@ void avisarDelBloqueo(int socketPlanificador) {
 	enviarMensaje(socketPlanificador, mensajeAEnviar);
 	free(mensajeAEnviar);
 }
-void nivelTerminado(int socketNivel) {
+void nivelTerminado(int socket) {
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
 	mensajeAEnviar->PayLoadLength = sizeof(char);
 	mensajeAEnviar->Payload = "F";
-	enviarMensaje(socketNivel, mensajeAEnviar);
+	enviarMensaje(socket, mensajeAEnviar);
 	free(mensajeAEnviar);
 }
 
@@ -295,6 +295,9 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 		}
 	}
 	nivelTerminado(socketNivel);
+	close(socketNivel);
+	nivelTerminado(socketPlanificador);
+	close(socketPlanificador);
 	queue_pop(personaje->listaNiveles);
 	free(posicion);
 	free(nivel);
@@ -356,12 +359,8 @@ int perderVida() {
 }
 
 int procesar() {
-	int socketOrquestador = conectarAlOrquestador();
-	if (socketOrquestador == 1) {
-		return EXIT_FAILURE;
-	}
 
-	int resultado = recorrerNiveles(socketOrquestador);
+	int resultado = recorrerNiveles();
 	if (resultado == 1) {
 		return EXIT_FAILURE;
 	}
@@ -386,15 +385,20 @@ int conectarAlOrquestador() {
 	return socketOrquestador;
 }
 
-int recorrerNiveles(int socketOrquestador) {
+int recorrerNiveles() {
+
+
 	log_debug(logger, "Arrancamos a recorrer los niveles del Personaje:%s",
 			personaje->nombre);
 
 	while (!queue_is_empty(personaje->listaNiveles)) {
-
+		int socketOrquestador = conectarAlOrquestador();
+		if (socketOrquestador == 1) {
+			return EXIT_FAILURE;
+		}
 		log_debug(logger, "Pidiendo el proximo nivel para realizar");
 		t_stream* stream = pedirNivel(personaje, socketOrquestador);
-
+		close(socketOrquestador);
 		if (stream->length == 0) {
 			log_error(logger,
 					"El nivel no se encontro, se procede a terminar el proceso del personaje (%s)",
