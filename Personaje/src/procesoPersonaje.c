@@ -191,6 +191,7 @@ void realizarMovimiento(Posicion* posicionActual,
 }
 
 void movimientoRealizado(int socketPlanificador) {
+	log_debug(logger,"El personaje:(%s) procede a avisarle al planificador de su movimiento",personaje->nombre);
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	mensaje->PayloadDescriptor = AVISO_MOVIMIENTO;
 	mensaje->PayLoadLength = sizeof(char);
@@ -215,6 +216,7 @@ int pedirRecurso(char recursoAPedir, int socketNivel) {
 	return 1;
 }
 void avisarDelBloqueo(int socketPlanificador) {
+	log_debug(logger,"El personaje:(%s) procede a avisar que esta bloqueado",personaje->nombre);
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = BLOQUEO_PERSONAJE;
 	mensajeAEnviar->PayLoadLength = sizeof(char);
@@ -223,6 +225,7 @@ void avisarDelBloqueo(int socketPlanificador) {
 	free(mensajeAEnviar);
 }
 void nivelTerminado(int socket) {
+	log_debug(logger,"El personaje:(%s) procede a avisar el fin del nivel",personaje->nombre);
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
 	mensajeAEnviar->PayLoadLength = sizeof(char);
@@ -243,61 +246,49 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	esperarConfirmacion(socketPlanificador);
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)",
 			personaje->nombre, nivel->nombre);
+	int movimientoPermitido;
 	while (!queue_is_empty(nivel->objetos)) {
 
 		char *cajaABuscar = queue_pop(nivel->objetos);
 		log_debug(logger,"Consultando ubicacion de la proxima caja del recurso (%s)",cajaABuscar);
 		consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
 		log_debug(logger,"La caja necesaria esta en X:(%d) Y:(%d)",posicion->x,posicion->y);
-		log_debug(logger,
-				"El personaje:(%s) consulta ubicacion de la caja(%c).",
-				personaje->nombre, *cajaABuscar);
 		int recursoAsignado;
 		while (!estaEnPosicionDeLaCaja(posicion, posicionActual)) {
-			int movimientoPermitido = 0;
-			log_debug(logger,
-					"El personaje:(%s) esta a la espera de la confirmacion de movimiento",
-					personaje->nombre);
+			movimientoPermitido = 0;
+			log_debug(logger,"El personaje:(%s) esta a la espera de la confirmacion de movimiento",personaje->nombre);
 			while (movimientoPermitido == 0) {
 				movimientoPermitido = esperarConfirmacionDelPlanificador(
 						socketPlanificador);
 			}
-			log_debug(logger,
-					"El personaje:(%s) tiene movimiento permitido, se procede a moverse",
-					personaje->nombre);
-			realizarMovimiento(posicionActual, posicion,
-					socketNivel);
-			log_debug(logger, "El personaje:(%s) se movio satisfactoriamente",
-					personaje->nombre);
+			log_debug(logger,"El personaje:(%s) tiene movimiento permitido, se procede a moverse",personaje->nombre);
+			realizarMovimiento(posicionActual, posicion,socketNivel);
+			log_debug(logger, "El personaje:(%s) se movio satisfactoriamente",personaje->nombre);
 			if (estaEnPosicionDeLaCaja(posicion, posicionActual)) {
 				log_debug(logger, "El personaje: (%s) pedira el recurso (%s) porque llego a la caja correspondiente.",
 						personaje->nombre, cajaABuscar);
 				recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
-				if (recursoAsignado == 0) {
-					log_debug(logger,
-							"El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible",
+				if (!recursoAsignado) {
+					log_debug(logger,"El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible",
 							personaje->nombre, cajaABuscar);
 					avisarDelBloqueo(socketPlanificador);
 					esperarDesbloqueo(socketPlanificador);
 					log_debug(logger,"El personaje (%s) fue desbloqueado, se continua con el nivel.",personaje->nombre);
 				} else {
-					log_debug(logger,
-							"El personaje:(%s) procede a avisarle al planificador de su movimiento",
-							personaje->nombre);
-					movimientoRealizado(socketPlanificador);
+					if(queue_is_empty(nivel->objetos)) {
+						nivelTerminado(socketPlanificador);
+						close(socketPlanificador);
+					} else {
+						movimientoRealizado(socketPlanificador);
+					}
 				}
 			} else {
-				log_debug(logger,
-						"El personaje:(%s) procede a avisarle al planificador de su movimiento",
-						personaje->nombre);
 				movimientoRealizado(socketPlanificador);
 			}
 		}
 	}
 	nivelTerminado(socketNivel);
 	close(socketNivel);
-	nivelTerminado(socketPlanificador);
-	close(socketPlanificador);
 	queue_pop(personaje->listaNiveles);
 	free(posicion);
 	free(nivel);

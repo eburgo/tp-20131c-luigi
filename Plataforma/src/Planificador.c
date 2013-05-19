@@ -114,9 +114,10 @@ void recibirPersonaje(int* socket) {
 }
 void dirigirMovimientos() {
 	Personaje *pj;
-	MPS_MSG respuesta;
+	MPS_MSG* respuesta;
 	int loggearEsperando=1;
 	while (1) {
+		respuesta = malloc(sizeof(MPS_MSG));
 		while (queue_is_empty(personajesListos)){
 			if(loggearEsperando){
 				log_debug(loggerPlanificador, "Mientras la cola de personajes este vacia, esperamos.");
@@ -131,9 +132,9 @@ void dirigirMovimientos() {
 		notificarMovimientoPermitido(pj->socket);
 		pj->quantum--;
 		log_debug(loggerPlanificador, "Esperamos la respuesta de (%s)", pj->simbolo);
-		recibirMensaje(pj->socket, &respuesta);
-		log_debug(loggerPlanificador, "Respuesta recibida (%d).",respuesta.PayloadDescriptor);
-		switch (respuesta.PayloadDescriptor) {
+		recibirMensaje(pj->socket, respuesta);
+		log_debug(loggerPlanificador, "Mensaje recibido (%d).",respuesta->PayloadDescriptor);
+		switch (respuesta->PayloadDescriptor) {
 		case MOVIMIENTO_FINALIZADO:
 			log_debug(loggerPlanificador, "El quantum del pj (%s) es:%d.",pj->simbolo,pj->quantum);
 			if(pj->quantum==0){
@@ -156,9 +157,8 @@ void dirigirMovimientos() {
 			list_add(planificador->bloqueados,pj);
 			break;
 		case NIVEL_FINALIZADO:
-			log_debug(loggerPlanificador, "Sacamos personaje de la cola.");
+			log_debug(loggerPlanificador, "El personaje (%s) termino el nivel",pj->simbolo);
 			queue_pop(personajesListos);
-			log_debug(loggerPlanificador, "Cerramos el socket por el que nos comunicabamos con el personaje.");
 			close(pj->socket);
 			break;
 		default:
