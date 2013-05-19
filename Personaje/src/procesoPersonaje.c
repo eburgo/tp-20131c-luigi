@@ -73,6 +73,8 @@ int socketNivel;
 #define MUERTE_PERSONAJE 7 // Notifica la muerte del personaje
 #define BLOQUEO_PERSONAJE 8 // Notifica el bloqueo del personaje
 #define INGRESA_NIVEL 9 // Avisa que el personaje ingresa al nivel
+#define SIN_RECURSOS 6
+#define CON_RECURSOS 7
 #define MOVIMIENTO_PERMITIDO 1
 
 int main(int argc, char *argv[]) {
@@ -143,7 +145,7 @@ void consultarUbicacionCaja(char cajaABuscar, int socketNivel,
 	mensaje->Payload = &cajaABuscar;
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensajeARecibir);
-	*posicion = *(Posicion*)mensajeARecibir->Payload;
+	*posicion = *(Posicion*) mensajeARecibir->Payload;
 	free(mensaje);
 	free(mensajeARecibir);
 }
@@ -195,7 +197,17 @@ void movimientoRealizado(int socketPlanificador) {
 }
 
 int pedirRecurso(char recursoAPedir, int socketNivel) {
-	return 0;
+	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
+	mensaje->PayloadDescriptor = PEDIR_RECURSO;
+	mensaje->PayLoadLength = sizeof(char);
+	mensaje->Payload = "3";
+	enviarMensaje(socketNivel, mensaje);
+	recibirMensaje(socketNivel,mensaje);
+	if(mensaje->PayloadDescriptor == CON_RECURSOS){
+		return 0;
+	}
+	return 1;
+	free(mensaje);
 }
 void avisarDelBloqueo(int socketPlanificador) {
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
@@ -233,7 +245,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 
 		log_debug(logger,
 				"El personaje:(%s) consulto ubicacion de la caja(%c), esta en la posicion x(%d),y(%d).",
-				personaje->nombre, *cajaABuscar,posicion->x,posicion->y);
+				personaje->nombre, *cajaABuscar, posicion->x, posicion->y);
 		int recursoAsignado;
 		while (!estaEnPosicionDeLaCaja(posicion, ubicacionEnNivelX,
 				ubicacionEnNivelY)) {
@@ -257,7 +269,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 				log_debug(logger, "El personaje:(%s) pedira el recurso (%s)",
 						personaje->nombre, cajaABuscar);
 				recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
-				if (recursoAsignado == 0) {
+				if (recursoAsignado == 1) {
 					log_debug(logger,
 							"El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible",
 							personaje->nombre, cajaABuscar);
