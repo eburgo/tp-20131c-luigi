@@ -98,10 +98,10 @@ int notificarMovimientoPermitido(int socketPersonaje) {
 void recibirPersonaje(int* socket) {
 	MPS_MSG mensajeInicializar;
 	Personaje* personaje = malloc(sizeof(Personaje));
-	log_debug(loggerPlanificador, "Esperando msj para inicializar un personaje.");
+	log_debug(loggerPlanificador, "Esperando mensaje para inicializar un personaje.");
 	recibirMensaje(*socket, &mensajeInicializar);
 	log_debug(loggerPlanificador, "Mensaje recibido, seteamos personaje.");
-	personaje->simbolo = *(char*)mensajeInicializar.Payload;
+	personaje->simbolo = mensajeInicializar.Payload;
 	personaje->socket = *socket;
 	personaje->quantum = quantumDefault;
 	log_debug(loggerPlanificador, "Encolamos el personaje(%c).",*(char*)mensajeInicializar.Payload);
@@ -109,7 +109,8 @@ void recibirPersonaje(int* socket) {
 	cantPersonajes++;
 	queue_push(personajesListos, personaje);
 	pthread_mutex_unlock(&semaforo_listos);
-	log_debug(loggerPlanificador, "Personaje encolado.");
+	log_debug(loggerPlanificador, "El personaje (%s) se recibio de manera correcta, notificando encolado exitoso",personaje->simbolo);
+	enviarMensaje(*socket, &mensajeInicializar);
 }
 void dirigirMovimientos() {
 	Personaje *pj;

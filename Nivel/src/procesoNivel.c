@@ -195,7 +195,8 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 	log_debug(logger, "Se recibio mensaje de inicializacion.");
 	personaje->simbolo = mensajeInicializar.Payload;
 	inicializarPersonaje(personaje->simbolo);
-	log_debug(logger, "Personaje inicializado correctamente: ");
+	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ", personaje->simbolo);
+	enviarMensaje(*socketConPersonaje, &mensajeInicializar);
 	while (terminoElNivel == 0) {
 		recibirMensaje(*socketConPersonaje, &mensajeARecibir);
 

@@ -17,7 +17,7 @@ typedef struct{
 }__attribute__((__packed__)) Planificador;
 
 typedef struct{
-	char simbolo;
+	char* simbolo;
 	int socket;
 	int quantum;
 }__attribute__((__packed__)) Personaje;
