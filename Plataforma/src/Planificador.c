@@ -134,7 +134,7 @@ void dirigirMovimientos() {
 		log_debug(loggerPlanificador, "Respuesta recibida:%c.",*(char*)respuesta.Payload);
 		switch (respuesta.PayloadDescriptor) {
 		case MOVIMIENTO_FINALIZADO:
-			log_debug(loggerPlanificador, "El quantum del pj (%c) es:%d.",pj->simbolo,pj->quantum);
+			log_debug(loggerPlanificador, "El quantum del pj (%s) es:%d.",pj->simbolo,pj->quantum);
 			if(pj->quantum==0){
 				log_debug(loggerPlanificador, "se saca el personaje de la cola.");
 				queue_pop(personajesListos);
