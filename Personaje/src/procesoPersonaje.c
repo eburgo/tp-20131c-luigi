@@ -57,7 +57,6 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, int ubicacionEnNivelX,
 // Espera la confirmacion.
 void esperarConfirmacion(int socket);
 
-
 //Globales
 Personaje* personaje;
 t_log* logger;
@@ -227,8 +226,13 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)",
 			personaje->nombre, nivel->nombre);
 	while (!queue_is_empty(nivel->objetos)) {
+
 		char *cajaABuscar = queue_pop(nivel->objetos);
+
 		consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
+		log_debug(logger,
+				"El personaje:(%s) consulta ubicacion de la caja(%c).",
+				personaje->nombre, *cajaABuscar);
 		int recursoAsignado;
 		while (!estaEnPosicionDeLaCaja(posicion, ubicacionEnNivelX,
 				ubicacionEnNivelY)) {
@@ -264,6 +268,11 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 							personaje->nombre);
 					movimientoRealizado(socketPlanificador);
 				}
+			} else {
+				log_debug(logger,
+						"El personaje:(%s) procede a avisrale al planificador de su movimiento",
+						personaje->nombre);
+				movimientoRealizado(socketPlanificador);
 			}
 		}
 	}
@@ -361,8 +370,10 @@ int recorrerNiveles(int socketOrquestador) {
 		log_debug(logger, "Pidiendo el proximo nivel para realizar");
 		t_stream* stream = pedirNivel(personaje, socketOrquestador);
 
-		if(stream->length == 0){
-			log_error(logger, "El nivel no se encontro, se procede a terminar el proceso del personaje (%s)",personaje->nombre);
+		if (stream->length == 0) {
+			log_error(logger,
+					"El nivel no se encontro, se procede a terminar el proceso del personaje (%s)",
+					personaje->nombre);
 			return EXIT_FAILURE;
 		}
 
