@@ -143,7 +143,7 @@ void consultarUbicacionCaja(char cajaABuscar, int socketNivel,
 	mensaje->Payload = &cajaABuscar;
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensajeARecibir);
-	posicion = mensajeARecibir->Payload;
+	*posicion = *(Posicion*)mensajeARecibir->Payload;
 	free(mensaje);
 	free(mensajeARecibir);
 }
@@ -230,9 +230,10 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 		char *cajaABuscar = queue_pop(nivel->objetos);
 
 		consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
+
 		log_debug(logger,
-				"El personaje:(%s) consulta ubicacion de la caja(%c).",
-				personaje->nombre, *cajaABuscar);
+				"El personaje:(%s) consulto ubicacion de la caja(%c), esta en la posicion x(%d),y(%d).",
+				personaje->nombre, *cajaABuscar,posicion->x,posicion->y);
 		int recursoAsignado;
 		while (!estaEnPosicionDeLaCaja(posicion, ubicacionEnNivelX,
 				ubicacionEnNivelY)) {
