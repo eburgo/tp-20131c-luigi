@@ -87,11 +87,11 @@ void agregarmeEnPlanificadores(Planificador* planificador) {
 
 int notificarMovimientoPermitido(int socketPersonaje) {
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
-	mensajeAEnviar->PayloadDescriptor = MOVIMIENTO_PERMITIDO
-	;
+	mensajeAEnviar->PayloadDescriptor = MOVIMIENTO_PERMITIDO;
 	mensajeAEnviar->PayLoadLength = strlen("Movete") + 1;
 	mensajeAEnviar->Payload = "Movete";
 	enviarMensaje(socketPersonaje, mensajeAEnviar);
+	free(mensajeAEnviar);
 	return 0;
 }
 
@@ -124,23 +124,24 @@ void dirigirMovimientos() {
 			}
 			sleep(1);
 		}
+		loggearEsperando=1;
 		log_debug(loggerPlanificador, "Tomamos el primer personaje de la cola.");
 		pj = queue_peek(personajesListos);
-		log_debug(loggerPlanificador, "Le notificamos el movimiento permitido.");
+		log_debug(loggerPlanificador, "Le notificamos el movimiento permitido a (%s)",pj->simbolo);
 		notificarMovimientoPermitido(pj->socket);
 		pj->quantum--;
-		log_debug(loggerPlanificador, "Esperamos la respuesta.");
+		log_debug(loggerPlanificador, "Esperamos la respuesta de (%s)", pj->simbolo);
 		recibirMensaje(pj->socket, &respuesta);
-		log_debug(loggerPlanificador, "Respuesta recibida:%c.",*(char*)respuesta.Payload);
+		log_debug(loggerPlanificador, "Respuesta recibida (%d).",respuesta.PayloadDescriptor);
 		switch (respuesta.PayloadDescriptor) {
 		case MOVIMIENTO_FINALIZADO:
 			log_debug(loggerPlanificador, "El quantum del pj (%s) es:%d.",pj->simbolo,pj->quantum);
 			if(pj->quantum==0){
-				log_debug(loggerPlanificador, "se saca el personaje de la cola.");
+				log_debug(loggerPlanificador, "se saca el personaje (%s) de la cola.",pj->simbolo);
 				queue_pop(personajesListos);
-				log_debug(loggerPlanificador, "se le asigna denuevo el quantum.");
+				log_debug(loggerPlanificador, "se le asigna de nuevo al personaje (%s) el quantum.",pj->simbolo);
 				pj->quantum = quantumDefault;
-				log_debug(loggerPlanificador, "Lo volvemos a encolar.");
+				log_debug(loggerPlanificador, "Lo volvemos a encolar a (%s)",pj->simbolo);
 				queue_push(personajesListos,pj);
 			}else{
 				log_debug(loggerPlanificador, "Notificamos que puede moverse nuevamente.");
@@ -148,9 +149,10 @@ void dirigirMovimientos() {
 			}
 			break;
 		case BLOQUEADO:
-			log_debug(loggerPlanificador, "Sacamos personaje de la cola.");
+			log_debug(loggerPlanificador, "Sacamos personaje (%s) de la cola.",pj->simbolo);
 			queue_pop(personajesListos);
-			log_debug(loggerPlanificador, "lo agregamos en la lista de bloqueados.");
+			log_debug(loggerPlanificador,"En la cola de listos quedan (%d) personajes",queue_size(personajesListos));
+			log_debug(loggerPlanificador, "Agregamos en la lista de bloqueados al personaje (%s).",pj->simbolo);
 			list_add(planificador->bloqueados,pj);
 			break;
 		case NIVEL_FINALIZADO:

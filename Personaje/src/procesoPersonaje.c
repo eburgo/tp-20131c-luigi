@@ -39,7 +39,7 @@ void consultarUbicacionCaja(char cajaABuscar, int socketNivel,
 // Espera un mensaje departe del planificador para poder realizar un movimiento
 int esperarConfirmacionDelPlanificador(int socketPlanificador);
 // Realiza la logica del movimiento y le avisa al nivel a donde moverse
-void realizarMovimiento(int ubicacionEnNivelX, int ubicacionEnNivelY,
+void realizarMovimiento(Posicion* posicionActual,
 		Posicion* posicion, int socketNivel);
 // Le avisa al planificador que realizo un movimiento
 void movimientoRealizado(int socketPlanificador);
@@ -52,8 +52,7 @@ void esperarDesbloqueo(int socketPlanificador);
 // Avisa al nivel que termino el nivel
 void nivelTerminado(int socketNivel);
 // Retorna 1 si el personaje esta en la ubicacion de la caja que necesita.
-int estaEnPosicionDeLaCaja(Posicion* posicion, int ubicacionEnNivelX,
-		int ubicacionEnNivelY);
+int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual);
 // Espera la confirmacion.
 void esperarConfirmacion(int socket);
 
@@ -73,9 +72,9 @@ int socketNivel;
 #define MUERTE_PERSONAJE 7 // Notifica la muerte del personaje
 #define BLOQUEO_PERSONAJE 8 // Notifica el bloqueo del personaje
 #define INGRESA_NIVEL 9 // Avisa que el personaje ingresa al nivel
+#define MOVIMIENTO_PERMITIDO 1
 #define SIN_RECURSOS 6
 #define CON_RECURSOS 7
-#define MOVIMIENTO_PERMITIDO 1
 
 int main(int argc, char *argv[]) {
 
@@ -145,7 +144,7 @@ void consultarUbicacionCaja(char cajaABuscar, int socketNivel,
 	mensaje->Payload = &cajaABuscar;
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensajeARecibir);
-	*posicion = *(Posicion*) mensajeARecibir->Payload;
+	*posicion = *(Posicion*)mensajeARecibir->Payload;
 	free(mensaje);
 	free(mensajeARecibir);
 }
@@ -160,25 +159,28 @@ int esperarConfirmacionDelPlanificador(int socketPlanificador) {
 	free(mensaje);
 	return 0;
 }
-void realizarMovimiento(int ubicacionEnNivelX, int ubicacionEnNivelY,
+void realizarMovimiento(Posicion* posicionActual,
 		Posicion* posicion, int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	if (ubicacionEnNivelX != posicion->x) {
-		if (ubicacionEnNivelX < posicion->x) {
-			ubicacionEnNivelX++;
-		} else if (ubicacionEnNivelX > posicion->x) {
-			ubicacionEnNivelX--;
+	log_debug(logger,"El personaje esta ubicado en X:(%d) Y:(%d)",posicionActual->x,posicionActual->y);
+	log_debug(logger,"El personaje procede a moverse a la caja en X:(%d) Y:(%d)",posicion->x,posicion->y);
+	if (posicionActual->x != posicion->x) {
+		if (posicionActual->x < posicion->x) {
+			posicionActual->x++;
+		} else if (posicionActual->x > posicion->x) {
+			posicionActual->x--;
 		}
-	} else if (ubicacionEnNivelY != posicion->y) {
-		if (ubicacionEnNivelY < posicion->y) {
-			ubicacionEnNivelY++;
-		} else if (ubicacionEnNivelY > posicion->y) {
-			ubicacionEnNivelY--;
+	} else if (posicionActual->y != posicion->y) {
+		if (posicionActual->y < posicion->y) {
+			posicionActual->y++;
+		} else if (posicionActual->y > posicion->y) {
+			posicionActual->y--;
 		}
 	}
+	log_debug(logger,"El personaje se movio a X:(%d) Y:(%d)",posicionActual->x,posicionActual->y);
 	Posicion* posicionNueva = malloc(sizeof(Posicion));
-	posicionNueva->x = ubicacionEnNivelX;
-	posicionNueva->y = ubicacionEnNivelY;
+	posicionNueva->x = posicionActual->x;
+	posicionNueva->y = posicionActual->y;
 	mensaje->PayloadDescriptor = AVISO_MOVIMIENTO;
 	mensaje->PayLoadLength = sizeof(Posicion);
 	mensaje->Payload = posicionNueva;
@@ -200,14 +202,15 @@ int pedirRecurso(char recursoAPedir, int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	mensaje->PayloadDescriptor = PEDIR_RECURSO;
 	mensaje->PayLoadLength = sizeof(char);
-	mensaje->Payload = "3";
+	mensaje->Payload = &recursoAPedir;
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel,mensaje);
 	if(mensaje->PayloadDescriptor == CON_RECURSOS){
+		free(mensaje);
 		return 0;
 	}
-	return 1;
 	free(mensaje);
+	return 1;
 }
 void avisarDelBloqueo(int socketPlanificador) {
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
@@ -229,8 +232,9 @@ void nivelTerminado(int socketNivel) {
 void recorrerNivel(int socketNivel, int socketPlanificador) {
 	Nivel *nivel = queue_peek(personaje->listaNiveles);
 	Posicion* posicion = malloc(sizeof(Posicion));
-	int ubicacionEnNivelX = 0;
-	int ubicacionEnNivelY = 0;
+	Posicion* posicionActual = malloc(sizeof(Posicion));
+	posicionActual->x = 0;
+	posicionActual->y = 0;
 	notificarIngresoAlNivel(socketNivel);
 	esperarConfirmacion(socketNivel);
 	notificarIngresoAlNivel(socketPlanificador);
@@ -240,15 +244,14 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	while (!queue_is_empty(nivel->objetos)) {
 
 		char *cajaABuscar = queue_pop(nivel->objetos);
-
+		log_debug(logger,"Consultando ubicacion de la proxima caja del recurso (%s)",cajaABuscar);
 		consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
-
+		log_debug(logger,"La caja necesaria esta en X:(%d) Y:(%d)",posicion->x,posicion->y);
 		log_debug(logger,
-				"El personaje:(%s) consulto ubicacion de la caja(%c), esta en la posicion x(%d),y(%d).",
-				personaje->nombre, *cajaABuscar, posicion->x, posicion->y);
+				"El personaje:(%s) consulta ubicacion de la caja(%c).",
+				personaje->nombre, *cajaABuscar);
 		int recursoAsignado;
-		while (!estaEnPosicionDeLaCaja(posicion, ubicacionEnNivelX,
-				ubicacionEnNivelY)) {
+		while (!estaEnPosicionDeLaCaja(posicion, posicionActual)) {
 			int movimientoPermitido = 0;
 			log_debug(logger,
 					"El personaje:(%s) esta a la espera de la confirmacion de movimiento",
@@ -260,30 +263,30 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 			log_debug(logger,
 					"El personaje:(%s) tiene movimiento permitido, se procede a moverse",
 					personaje->nombre);
-			realizarMovimiento(ubicacionEnNivelX, ubicacionEnNivelY, posicion,
+			realizarMovimiento(posicionActual, posicion,
 					socketNivel);
 			log_debug(logger, "El personaje:(%s) se movio satisfactoriamente",
 					personaje->nombre);
-			if (estaEnPosicionDeLaCaja(posicion, ubicacionEnNivelX,
-					ubicacionEnNivelY)) {
-				log_debug(logger, "El personaje:(%s) pedira el recurso (%s)",
+			if (estaEnPosicionDeLaCaja(posicion, posicionActual)) {
+				log_debug(logger, "El personaje: (%s) pedira el recurso (%s) porque llego a la caja correspondiente.",
 						personaje->nombre, cajaABuscar);
 				recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
-				if (recursoAsignado == 1) {
+				if (recursoAsignado == 0) {
 					log_debug(logger,
 							"El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible",
 							personaje->nombre, cajaABuscar);
 					avisarDelBloqueo(socketPlanificador);
 					esperarDesbloqueo(socketPlanificador);
+					log_debug(logger,"El personaje (%s) fue desbloqueado, se continua con el nivel.",personaje->nombre);
 				} else {
 					log_debug(logger,
-							"El personaje:(%s) procede a avisrale al planificador de su movimiento",
+							"El personaje:(%s) procede a avisarle al planificador de su movimiento",
 							personaje->nombre);
 					movimientoRealizado(socketPlanificador);
 				}
 			} else {
 				log_debug(logger,
-						"El personaje:(%s) procede a avisrale al planificador de su movimiento",
+						"El personaje:(%s) procede a avisarle al planificador de su movimiento",
 						personaje->nombre);
 				movimientoRealizado(socketPlanificador);
 			}
@@ -295,12 +298,15 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	free(nivel);
 }
 
-int estaEnPosicionDeLaCaja(Posicion* posicion, int ubicacionEnNivelX,
-		int ubicacionEnNivelY) {
-	return (ubicacionEnNivelX == posicion->x && ubicacionEnNivelY == posicion->y);
+int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual) {
+	return (posicionActual->x == posicion->x && posicionActual->y == posicion->y);
 }
 
 void esperarDesbloqueo(int socketPlanificador) {
+	MPS_MSG mensajeARecibir;
+	recibirMensaje(socketPlanificador, &mensajeARecibir);
+	log_debug(logger,"Se recibe:(%d)",mensajeARecibir.PayloadDescriptor);
+	log_debug(logger,"mensaje: (%s)",mensajeARecibir.Payload);
 }
 
 int perderVida() {
