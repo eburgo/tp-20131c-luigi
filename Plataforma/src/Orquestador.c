@@ -179,6 +179,7 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	planificador->socketEscucha=*socketEscucha;
 	planificador->bloqueados=list_create();
 	planificador->personajes=list_create();
+	planificador->listos=queue_create();
 	pthread_mutex_lock(&semaforo_planificadores);
 	dictionary_put(planificadores,planificador->nombreNivel,planificador);
 	pthread_mutex_unlock(&semaforo_planificadores);

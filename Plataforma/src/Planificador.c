@@ -48,12 +48,12 @@ int recibirPersonajes(Planificador *planificador) {
 			LOG_LEVEL_TRACE);
 	while (1) {
 		socketNuevaConexion = malloc(sizeof(int));
-		mensaje = malloc(sizeof(MPS_MSG));
 		log_debug(log,"Se procede a escuchar conexiones de personajes en el planificador (%s) en el socket (%d)",planificador->nombreNivel,planificador->socketEscucha);
-		if ((*socketNuevaConexion = accept(planificador->socketEscucha, NULL, 0))< 0) {
+		if ((*socketNuevaConexion = accept(planificador->socketEscucha, NULL, 0)) < 0) {
 			log_error(log, "Error al aceptar una conexión.");
 			return EXIT_FAILURE;
 		}
+		mensaje = malloc(sizeof(MPS_MSG));
 		recibirMensaje(*socketNuevaConexion, mensaje);
 		Personaje *personaje = malloc(sizeof(Personaje));
 		personaje->simbolo = (char*) mensaje->Payload;
@@ -96,6 +96,7 @@ int manejarPersonajes(Planificador *planificador) {
 			notificarMovimientoPermitido(personaje);
 			recibirMensaje(personaje->socket, mensaje);
 			log_debug(log,"Mensaje recibido de (%s) es el descriptor (%d)",personaje->simbolo,mensaje->PayloadDescriptor);
+			sleep(3);
 		}
 		switch (mensaje->PayloadDescriptor) {
 		case BLOQUEADO:
