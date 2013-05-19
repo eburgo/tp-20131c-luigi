@@ -34,17 +34,17 @@ int comunicarPersonajes();
 // Inicializara al personaje, lo guardara en la lista de items que estan en el nivel.
 int inicializarPersonaje(char* simbolo);
 //Se fija si el recurso esta disponible y le responde por si o por no.
-int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int socketConPersonaje);
+int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje);
 //Se comunicara con el personaje.
-int interactuarConPersonaje(int socketNuevaConexion);
+int interactuarConPersonaje(int* socketNuevaConexion);
 //En caso de que se ingrese un recurso qe no existe.
-int informarError(int socketConPersonaje);
+int informarError(int* socketConPersonaje);
 //Realiza el movimiento del Personaje
 int realizarMovimiento(Posicion* posicion, Personaje* personaje);
 //busca una caja en la lista de cajas del nivel
 ITEM_NIVEL* buscarCaja(char* cajaABuscar);
 // da un recurso si el nivel los tiene
-int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje);
+int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje);
 // Libera los recursos
 void liberarRecursos(Personaje* personaje);
 
@@ -185,20 +185,19 @@ int comunicarPersonajes(int *socketEscucha) {
 	}
 	return 0;
 }
-int interactuarConPersonaje(int socketConPersonaje) {
+int interactuarConPersonaje(int* socketConPersonaje) {
 	int terminoElNivel = 0;
 	MPS_MSG mensajeARecibir;
 	MPS_MSG mensajeInicializar;
 	Personaje* personaje = malloc(sizeof(Personaje));
 
-
-	recibirMensaje(socketConPersonaje, &mensajeInicializar);
-	log_debug(logger, "Se recibio mensaje de inicializacion.%s",mensajeInicializar.Payload);
+	recibirMensaje(*socketConPersonaje, &mensajeInicializar);
+	log_debug(logger, "Se recibio mensaje de inicializacion.");
 	personaje->simbolo = mensajeInicializar.Payload;
 	inicializarPersonaje(personaje->simbolo);
 	log_debug(logger, "Personaje inicializado correctamente: ");
 	while (terminoElNivel == 0) {
-		recibirMensaje(socketConPersonaje, &mensajeARecibir);
+		recibirMensaje(*socketConPersonaje, &mensajeARecibir);
 
 		log_debug(logger, "Se recibio un mensaje tipo: %d",
 				mensajeARecibir.PayloadDescriptor);
@@ -228,21 +227,21 @@ int interactuarConPersonaje(int socketConPersonaje) {
 		}
 	}
 	liberarRecursos(personaje);
-	close(socketConPersonaje);
+	close(*socketConPersonaje);
 	free(personaje);
 	return 0;
 }
 
-int informarError(int socketConPersonaje) {
+int informarError(int* socketConPersonaje) {
 	MPS_MSG respuestaError;
 	respuestaError.PayloadDescriptor = ERROR_MENSAJE;
 	respuestaError.PayLoadLength = strlen("payloadDescriptor incorrecto.") + 1;
 	respuestaError.Payload = "payloadDescriptor incorrecto.";
-	enviarMensaje(socketConPersonaje, &respuestaError);
+	enviarMensaje(*socketConPersonaje, &respuestaError);
 	return 0;
 }
 
-int darRecurso(char* recurso, Personaje* personaje, int socketPersonaje) {
+int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	ITEM_NIVEL* caja = buscarCaja(recurso);
 
@@ -275,7 +274,7 @@ int realizarMovimiento(Posicion* posicion, Personaje* personaje) {
 	return 0;
 }
 
-int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int socketConPersonaje) {
+int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje) {
 	ITEM_NIVEL* caja = buscarCaja(mensajeARecibir->Payload);
 	Posicion* posicion = malloc(sizeof(Posicion));
 	posicion->x = caja->posx;
@@ -284,7 +283,7 @@ int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int socketConPersonaje) 
 	mensajeAEnviar->PayloadDescriptor = UBICACION_CAJA;
 	mensajeAEnviar->PayLoadLength = sizeof(Posicion);
 	mensajeAEnviar->Payload = posicion;
-	enviarMensaje(socketConPersonaje, mensajeAEnviar);
+	enviarMensaje(*socketConPersonaje, mensajeAEnviar);
 	log_debug(logger, "Mensaje enviado con exito.");
 	free(posicion);
 	free(mensajeAEnviar);
