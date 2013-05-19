@@ -15,11 +15,10 @@
 #include "Planificador.h"
 
 void recibirPersonaje(int *socket);// cuando llega una conexion se lo mete en la cola
-void dirigirMovimientos();//se va dandole permisos a los personajes en base a la cola q tenemos. En un hilo aparte!
+void dirigirMovimientos(Planificador* planificador);//se va dandole permisos a los personajes en base a la cola q tenemos. En un hilo aparte!
 void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion);
 t_queue *personajesListos;
 int cantPersonajes = 0;
-Planificador *planificador;
 
 extern t_dictionary *planificadores;
 extern pthread_mutex_t semaforo_planificadores;
@@ -32,12 +31,10 @@ t_log* loggerPlanificador;
 
 int iniciarPlanificador(void* nombreNivel) {
 
-	char nombreOrigen[16] = "PLANIFICADOR - ";
-	char* nombreLog = strcat(nombreOrigen,nombreNivel);
-	loggerPlanificador = log_create("/home/utnso/planificador.log", nombreLog , true,
+	loggerPlanificador = log_create("/home/utnso/planificador.log", "PLANIFICADOR" , true,
 			LOG_LEVEL_TRACE);
 
-	planificador = malloc(sizeof(Planificador));
+	Planificador *planificador = malloc(sizeof(Planificador));
 	int *socketEscucha;
 	int *socketNuevaConexion;
 	pthread_t *thread;
@@ -55,16 +52,15 @@ int iniciarPlanificador(void* nombreNivel) {
 	planificador->bloqueados = list_create();
 	log_debug(loggerPlanificador, "Se agrega en la lista compartida de planificadores.");
 	agregarmeEnPlanificadores(planificador);
-	pthread_t thread2;
+	pthread_t* thread2 = malloc(sizeof(pthread_t));
 	log_debug(loggerPlanificador, "Se crea un hilo que va a dirigir los movimientos.");
-	pthread_create(&thread2, NULL, (void*) dirigirMovimientos, NULL );
+	pthread_create(thread2, NULL, (void*) dirigirMovimientos, planificador );
 	while (1) {
 		thread = malloc(sizeof(pthread_t));
 		socketNuevaConexion = malloc(sizeof(int));
-		log_debug(loggerPlanificador, "Bloqueados esperando una conexion.");
+		log_debug(loggerPlanificador, "Planificadores a la espera de conexiones");
 		if ((*socketNuevaConexion = accept(*socketEscucha, NULL, 0)) < 0) {
 			log_error(loggerPlanificador, "Error al aceptar una conexión.");
-			perror("Error al aceptar conexion entrante");
 			return EXIT_FAILURE;
 		}
 		log_info(loggerPlanificador, "Se acepto una conexion correctamente en el socket: %d.",*socketNuevaConexion);
@@ -112,7 +108,11 @@ void recibirPersonaje(int* socket) {
 	log_debug(loggerPlanificador, "El personaje (%s) se recibio de manera correcta, notificando encolado exitoso",personaje->simbolo);
 	enviarMensaje(*socket, &mensajeInicializar);
 }
-void dirigirMovimientos() {
+void dirigirMovimientos(Planificador* planificador) {
+	char nombreOrigen[16] = "PLANIFICADOR - ";
+	char* nombreLog = strcat(nombreOrigen,planificador->nombreNivel);
+	t_log* logger = loggerPlanificador = log_create("/home/utnso/planificador.log", nombreLog , true,
+			LOG_LEVEL_TRACE);
 	Personaje *pj;
 	MPS_MSG* respuesta;
 	int loggearEsperando=1;
@@ -167,6 +167,7 @@ void dirigirMovimientos() {
 		}
 		sleep(tiempoAccion);
 	}
+	log_destroy(logger);
 }
 
 void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion){

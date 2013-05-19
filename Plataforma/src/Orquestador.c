@@ -167,8 +167,8 @@ void armarNivelConexion(NivelConexion *nivelConexion,Nivel *nivel,Planificador *
 }
 
 int iniciarUnPlanificador(char* nombreNivel) {
-	pthread_t thread;
-	pthread_create(&thread, NULL, (void*) iniciarPlanificador, (void*) nombreNivel);
+	pthread_t* thread = malloc(sizeof(pthread_t));
+	pthread_create(thread, NULL, (void*) iniciarPlanificador, (void*) nombreNivel);
 	return 0;
 }
 
