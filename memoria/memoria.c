@@ -30,71 +30,37 @@ int almacenar_particion(t_memoria segmento, char id, int tamanio, char* contenid
 		return -1;
 	}
 
-	int index = buscarPeorParticion(listaParticiones);
-
-	if(tamanioPeorEspacio(segmento) < strlen(contenido)){
+	if(tamanioPeorEspacio(segmento, listaParticiones) < strlen(contenido)){
 		printf("Error: no hay una particion para almacenar la solicitud \n");
 		return 0;
-	}else{
-		if (index != -1){
-			t_particion* pLibreMayor = list_get(listaParticiones,index);
-			int tamParticion = pLibreMayor->tamanio;
-			if (tamParticion > tamanioPeorEspacio((char*)(buscarMayorDireccion(listaParticiones)))){
-				if (tamParticion < strlen(contenido))
-					return 0;
-			}else{
-				if (tamanioPeorEspacio((char*)(buscarMayorDireccion(listaParticiones))) < strlen(contenido))
-					return 0;
-			}
-		}else{
-			if(tamanioPeorEspacio(segmento) < strlen(contenido)){
-				printf("Error: no hay una particion para almacenar la solicitud \n");
-				return 0;
-			}
-		}
 	}
 
+	int direccion = grabarContenido(segmento, listaParticiones, contenido);
 
-	if (index != -1){
+	if (buscarDireccion(listaParticiones, direccion) != -1){
+		int index = buscarPeorParticion(listaParticiones);
 		t_particion* particionLibre = list_get(listaParticiones,index);
 		int tamanioParticion = particionLibre->tamanio;
-		int tamanioSegmentoLibre = tamanioPeorEspacio((char*)(buscarMayorDireccion(listaParticiones)));
 
-		if (tamanioParticion < tamanioSegmentoLibre){
-			int direccion = grabarContenido(((char*)(int)(buscarMayorDireccion(listaParticiones))),contenido);
-			t_particion *particion = malloc( sizeof(t_particion) );
-			particion->id = id;
-			particion->inicio = direccion - (int)segmento;
-			particion->dato = (char*)direccion;
-			particion->libre = false;
-			particion->tamanio = tamanio;
-			list_add(listaParticiones,particion);
+		t_particion *particion = malloc( sizeof(t_particion) );
+		particion->id = id;
+		particion->inicio = (int)particionLibre->dato - (int)segmento;
+		particion->dato = particionLibre->dato;
+		particion->libre = false;
+		particion->tamanio = tamanio;
+		list_remove_and_destroy_element(listaParticiones, index,free);
+		list_add(listaParticiones,particion);
+
+		if(tamanioParticion > tamanio){
+			t_particion *pLibre = malloc( sizeof(t_particion) );
+			pLibre->id = ' ';
+			pLibre->inicio = (int)particion->dato + particion->tamanio - (int)segmento;
+			pLibre->dato = (char*)((int)particion->dato + particion->tamanio);
+			pLibre->libre = true;
+			pLibre->tamanio = tamanioParticion - tamanio;
+			list_add(listaParticiones,pLibre);
 		}
-		else{
-			memcpy(particionLibre->dato,contenido,strlen(contenido));;
-			t_particion *particion = malloc( sizeof(t_particion) );
-			particion->id = id;
-			particion->inicio = (int)particionLibre->dato - (int)segmento;
-			particion->dato = particionLibre->dato;
-			particion->libre = false;
-			particion->tamanio = tamanio;
-			list_remove_and_destroy_element(listaParticiones, index,free);
-			list_add(listaParticiones,particion);
-
-			if(tamanioParticion > tamanio){
-				t_particion *pLibre = malloc( sizeof(t_particion) );
-				pLibre->id = ' ';
-				pLibre->inicio = (int)particion->dato + particion->tamanio - (int)segmento;
-				pLibre->dato = (char*)((int)particion->dato + particion->tamanio);
-				pLibre->libre = true;
-				pLibre->tamanio = tamanioParticion - tamanio;
-				list_add(listaParticiones,pLibre);
-			}
-		}
-
-	}
-	else{
-		int direccion = grabarContenido(segmento,contenido);
+	}else{
 		t_particion *particion = malloc( sizeof(t_particion) );
 		particion->id = id;
 		particion->inicio = direccion - (int)segmento;
@@ -103,6 +69,7 @@ int almacenar_particion(t_memoria segmento, char id, int tamanio, char* contenid
 		particion->tamanio = tamanio;
 		list_add(listaParticiones,particion);
 	}
+
 	return 1;
 }
 
@@ -128,59 +95,6 @@ void liberar_memoria(t_memoria segmento) {
 
 t_list* particiones(t_memoria segmento) {
 	t_list* list = list_create();
-/*
-	t_particion *particion;
-	char* dirSegmento;
-	int tamanio, dirInicio, index;
-	dirSegmento=segmento;
-	int dirInicioSegmento = (int)dirSegmento;
-
-	while (((int)dirSegmento <= (int)segmento+strlen(segmento)) & (*dirSegmento!='\0')){
-		dirInicio = dirInicioSegmento;
-
-		if(*dirSegmento!=' '){
-			dirInicio = (int)dirSegmento - dirInicio;
-			tamanio = 0;
-			index = buscarDireccion(listaParticiones, (int)dirSegmento);
-
-			if (index!=-1){
-			particion = list_get(listaParticiones, index);
-			}
-
-			while ((*dirSegmento!=' ') & ((int)dirSegmento < (int)segmento+strlen(segmento)) & (tamanio<particion->tamanio)){
-				dirSegmento++;
-				tamanio++;
-			}
-
-			t_particion *new = malloc( sizeof(t_particion) );
-			new->id = particion->id;
-			new->inicio = dirInicio;
-			new->dato = (char *) (dirSegmento - tamanio);
-			new->libre = false;
-			new->tamanio = tamanio;
-			list_add(list,new);
-		}
-		else{
-			dirInicio = (int)dirSegmento - dirInicio;
-
-			tamanio = 0;
-			while ((*dirSegmento ==' ') & ((int)dirSegmento <= (int)segmento+strlen(segmento))){
-				dirSegmento++;
-				tamanio++;
-			}
-
-			t_particion *new = malloc( sizeof(t_particion) );
-			new->id = 'A';
-			new->inicio = dirInicio;
-			new->dato = (char *) (dirSegmento - tamanio);
-			new->libre = true;
-			new->tamanio = tamanio;
-			list_add(list,new);
-		}
-
-	}
-*/
-
 
 	if (list_size(listaParticiones) == 0){
 		t_particion *new = malloc( sizeof(t_particion) );
@@ -209,47 +123,8 @@ t_list* particiones(t_memoria segmento) {
     return list;
 }
 
-int buscarPeorEspacio(t_memoria segmento) {
-	int dirInicial,dirEspacioLibre;
-	char* direccion = segmento;
-	int espacioLibre,mayorEspacioLibre;
-	mayorEspacioLibre = 0;
-	dirEspacioLibre = (int)segmento;
-
-	while ((direccion <= segmento+strlen(segmento)) & (*direccion != '\0')) {
-		espacioLibre = 0;
-
-		if (*direccion == ' ')
-			dirInicial= (int)direccion;
-
-		while ((*direccion == ' ') & (*direccion != '\0') & (segmento <= direccion+strlen(segmento))) {
-			espacioLibre++;
-			direccion++;
-		}
-		if (espacioLibre > mayorEspacioLibre) {
-			mayorEspacioLibre = espacioLibre;
-			dirEspacioLibre = dirInicial;
-		}
-		direccion++;
-	}
-return dirEspacioLibre;
-}
-
-int tamanioPeorEspacio(t_memoria segmento) {
-	char* direccion;
-	int espacioLibre=0;
-
-	direccion = (char *)buscarPeorEspacio(segmento);
-
-	while ((*direccion == ' ') & (*direccion != '\0')) {
-		espacioLibre++;
-		direccion++;
-	}
-return espacioLibre;
-}
-
-int grabarContenido(t_memoria segmento, char* contenido){
-	int direccion = buscarPeorEspacio(segmento);
+int grabarContenido(t_memoria segmento, t_list *listaParticiones , char* contenido){
+	int direccion = buscarPeorEspacio(segmento, listaParticiones);
 	memcpy((char*)direccion,contenido,strlen(contenido));
 return direccion;
 }
@@ -271,6 +146,28 @@ int buscarID(t_list *self, char id) {
 	}
 
 	if(particion->id == id)
+		return index;
+	else
+		return -1;
+}
+
+int buscarDireccion(t_list *self, int direccion) {
+	t_link_element *aux = self->head;
+	if(aux == NULL)
+		return -1;
+
+	t_particion* particion = (t_particion*)aux->data;
+	int index = 0;
+
+	while ((aux != NULL) & ((int)particion->dato != direccion)){
+		aux = aux->next;
+		if (aux != NULL){
+			particion = (t_particion*)aux->data;
+		}
+		index++;
+	}
+
+	if((int)particion->dato == direccion)
 		return index;
 	else
 		return -1;
@@ -325,6 +222,54 @@ int buscarPeorParticion(t_list *self) {
 		return -1;
 	else
 		return indexMayorEspacio;
+}
+
+int buscarPeorEspacio(t_memoria segmento, t_list *listaParticiones) {
+	int dirEspacioLibre;
+	int espacioLibre = 0;
+	int index = buscarPeorParticion(listaParticiones);
+	int dirUltimaParticion = buscarMayorDireccion(listaParticiones);
+
+	if (dirUltimaParticion == -1){
+		dirEspacioLibre = (int)segmento;
+	}else{
+		int segmentoLibre = dirUltimaParticion;
+		if (index == -1){
+			dirEspacioLibre = segmentoLibre;
+		}else{
+			char* direccion = (char*)segmentoLibre;
+			while ((*direccion == ' ') & (*direccion != '\0')) {
+				espacioLibre++;
+				direccion++;
+			}
+
+			t_particion* particionLibre = list_get(listaParticiones,index);
+			if (particionLibre->tamanio >= espacioLibre)
+				dirEspacioLibre = (int)particionLibre->dato;
+			else
+				dirEspacioLibre = segmentoLibre;
+		}
+	}
+
+return dirEspacioLibre;
+}
+
+int tamanioPeorEspacio(t_memoria segmento, t_list *listaParticiones) {
+	int espacioLibre=0;
+
+	char* direccion = (char *)buscarPeorEspacio(segmento,listaParticiones);
+	int index = buscarDireccion(listaParticiones, (int)direccion);
+	if (index == -1){
+		while ((*direccion == ' ') & (*direccion != '\0')) {
+			espacioLibre++;
+			direccion++;
+		}
+	}else{
+		t_particion *particionLibre = list_get(listaParticiones, index);
+		espacioLibre = (int)particionLibre->tamanio;
+	}
+
+return espacioLibre;
 }
 
 bool _particion_menor(t_particion *list, t_particion *listaParticiones) {

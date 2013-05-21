@@ -18,9 +18,9 @@
     int eliminar_particion(t_memoria segmento, char id);
     void liberar_memoria(t_memoria segmento);
     t_list* particiones(t_memoria segmento);
-    int tamanioPeorEspacio(t_memoria segmento);
-    int buscarPeorEspacio(t_memoria segmento);
-    int grabarContenido(t_memoria segmento, char* contenido);
+    int tamanioPeorEspacio(t_memoria segmento, t_list *listaParticiones);
+    int buscarPeorEspacio(t_memoria segmento, t_list *listaParticiones);
+    int grabarContenido(t_memoria segmento, t_list *listaParticiones , char* contenido);
     int buscarID(t_list *self, char id);
     int buscarDireccion(t_list *self, int dir);
     int buscarMayorDireccion(t_list *self);
