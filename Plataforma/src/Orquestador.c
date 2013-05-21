@@ -44,7 +44,9 @@ int iniciarOrquestador() {
 	log_debug(loggerOrquestador, "Iniciando servidor...");
 	socketEscucha = iniciarServidor(PUERTO);
 	log_debug(loggerOrquestador, "Servidor escuchando en el puerto (%d)",PUERTO);
-
+	log_debug(loggerOrquestador, "Se levanta la configuracion de los planificadores.");
+	levantarConfiguracion("/home/utnso/git/tp-20131c-luigi/Plataforma/Planificador.config", &quantumDefault,&tiempoAccion);
+	log_debug(loggerOrquestador, "Quantum seteado a(%d), tiempoAccion seteado a(%d)",quantumDefault,tiempoAccion);
 	while (1) {
 		thread = malloc(sizeof(pthread_t));
 		socketNuevaConexion = malloc(sizeof(int));
@@ -188,3 +190,10 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	return 0;
 }
 
+void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion){
+	t_config *config = config_create(path);
+	*tiempoAccion = atoi(config_get_string_value(config, "tiempoAccion"));
+	*quantum = atoi(config_get_string_value(config, "quantum"));
+	config_destroy(config);
+
+}

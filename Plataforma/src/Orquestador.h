@@ -34,5 +34,7 @@ int registrarNivel(NivelDatos *nivelDatos, int socket) ;
 //agarra y busca los datos del nivel q le pide un personaje  y los mete en nivelConexion.
 //devuelve -1 si no esta el nivel, -2 si no esta el planificador o 0 si se encontro.
 int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion);
+//levanta la configuracion de los planificadores donde se inicializa quantum y tiempo de accion.
+void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion);
 
 
