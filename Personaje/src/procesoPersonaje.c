@@ -216,7 +216,7 @@ int pedirRecurso(char recursoAPedir, int socketNivel) {
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensaje);
 	if (mensaje->PayloadDescriptor == SIN_RECURSOS) {
-		log_debug(logger, "El recurso (%s) se otorgo satisfactoriamente",
+		log_debug(logger, "El recurso (%c) no esta disponible.",
 				recursoAPedir);
 		free(mensaje);
 		return 0;
@@ -499,7 +499,7 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel,int socketNivel, int
 	if (!recursoAsignado) {
 		log_debug(logger,
 				"El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible",
-				personaje->nombre, cajaABuscar);
+				personaje->nombre,cajaABuscar);
 		avisarDelBloqueo(socketPlanificador);
 		esperarDesbloqueo(socketPlanificador);
 		log_debug(logger,
