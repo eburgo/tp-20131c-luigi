@@ -46,7 +46,7 @@ void recursoObtenido(int socketPlanificador);
 // Pide un recurso al nivel
 int pedirRecurso(char recursoAPedir, int socketNivel);
 // Notifica al planificador del bloqueo
-void avisarDelBloqueo(int socketPlanificador);
+void avisarDelBloqueo(int socketPlanificador,char* recursoPedido);
 // Espera que el planificador lo desbloquee.
 void esperarDesbloqueo(int socketPlanificador);
 // Avisa al nivel que termino el nivel
@@ -222,12 +222,12 @@ int pedirRecurso(char recursoAPedir, int socketNivel) {
 	free(mensaje);
 	return 1;
 }
-void avisarDelBloqueo(int socketPlanificador) {
-	log_debug(logger, "El personaje:(%s) procede a avisar que esta bloqueado", personaje->nombre);
+void avisarDelBloqueo(int socketPlanificador,char* recursoPedido) {
+	log_debug(logger, "El personaje:(%s) procede a avisar que esta bloqueado.", personaje->nombre);
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = BLOQUEO_PERSONAJE;
 	mensajeAEnviar->PayLoadLength = sizeof(char);
-	mensajeAEnviar->Payload = personaje->simbolo;
+	mensajeAEnviar->Payload = recursoPedido;
 	enviarMensaje(socketPlanificador, mensajeAEnviar);
 	free(mensajeAEnviar);
 }
@@ -456,7 +456,7 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, in
 	recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
 	if (!recursoAsignado) {
 		log_debug(logger, "El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible", personaje->nombre, cajaABuscar);
-		avisarDelBloqueo(socketPlanificador);
+		avisarDelBloqueo(socketPlanificador,cajaABuscar);
 		esperarDesbloqueo(socketPlanificador);
 		log_debug(logger, "El personaje (%s) fue desbloqueado, se continua con el nivel.", personaje->nombre);
 	} else {

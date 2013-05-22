@@ -105,8 +105,9 @@ int manejarPersonajes(Planificador *planificador) {
 		}
 		switch (mensaje->PayloadDescriptor) {
 		case BLOQUEADO:
-			log_debug(log, "El personaje (%s) se bloqueo", personaje->simbolo);
+			log_debug(log, "El personaje (%s) se bloqueo por el recurso (%s)", personaje->simbolo,(char*)mensaje->Payload);
 			queue_pop(planificador->listos);
+			personaje->causaBloqueo=(char*)mensaje->Payload;
 			list_add(planificador->bloqueados, personaje);
 			break;
 		case FINALIZADO:

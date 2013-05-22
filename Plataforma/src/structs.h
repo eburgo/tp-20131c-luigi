@@ -24,4 +24,5 @@ typedef struct{
 	char* simbolo;
 	int socket;
 	int quantum;
+	char* causaBloqueo;
 }__attribute__((__packed__)) Personaje;
