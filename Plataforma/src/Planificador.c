@@ -98,7 +98,7 @@ int manejarPersonajes(Planificador *planificador) {
 		while (personaje->quantum > 1 && mensaje->PayloadDescriptor == MOVIMIENTO_FINALIZADO) {
 
 			personaje->quantum--;
-			sleep(2);
+			sleep(tiempoAccion);
 			log_debug(log,"Notificando movimiento permitido a (%s)",personaje->simbolo);
 			notificarMovimientoPermitido(personaje);
 			recibirMensaje(personaje->socket, mensaje);
@@ -122,7 +122,7 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_push(planificador->listos,personaje);
 			break;
 		}
-		sleep(2);
+		sleep(tiempoAccion);
 	}
 	log_destroy(log);
 	return 0;

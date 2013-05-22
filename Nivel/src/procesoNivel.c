@@ -191,6 +191,8 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 	MPS_MSG mensajeInicializar;
 	Personaje* personaje = malloc(sizeof(Personaje));
 	personaje->recursosObtenidos = queue_create();
+	personaje->x=0;
+	personaje->y=0;
 	recibirMensaje(*socketConPersonaje, &mensajeInicializar);
 	log_debug(logger, "Se recibio mensaje de inicializacion.");
 	personaje->simbolo = mensajeInicializar.Payload;
@@ -218,9 +220,8 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 			terminoElNivel = 1;
 			break;
 		case FINALIZAR:
-			log_debug(logger, "El personaje ( %s ) termino el nivel satisfactoriamente, se procede a liberar recursos.",personaje->simbolo);
+			log_debug(logger, "El personaje (%s) termino el nivel satisfactoriamente, se procede a liberar recursos.",personaje->simbolo);
 			terminoElNivel = 1;
-			log_debug(logger, "El personaje termino el nivel.");
 			break;
 		default:
 			informarError(socketConPersonaje);
@@ -256,25 +257,21 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 		return 0;
 	}
 	if (!(caja->posx == personaje->x && caja->posy == personaje->y)) {
-		mensaje->PayloadDescriptor = 9;
-		mensaje->PayLoadLength = sizeof(char);
-		mensaje->Payload = "0";
-		enviarMensaje(*socketPersonaje,mensaje);
-		free(mensaje);
+		log_debug(logger,"La caja del recurso (%c) no esta en la posicion de (%s)", caja->id,personaje->simbolo);
 		return 0;
 	}
 	pthread_mutex_lock(&semaforo_listaNiveles);
-	//restarRecurso(itemsEnNivel,caja->id);
 	caja->quantity--;
 	log_debug(logger,"Al personaje (%s) se le dio el recurso (%c) del que quedan(%d)",personaje->simbolo, caja->id,caja->quantity);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
-	char* unRecurso=malloc(sizeof(char));
-	*unRecurso=caja->id;
-	queue_push(personaje->recursosObtenidos,unRecurso);
+	char* unRecurso = malloc(sizeof(char));
+	*unRecurso = caja->id;
+	queue_push(personaje->recursosObtenidos,string_substring_until(unRecurso, 1));
 	mensaje->PayloadDescriptor = HAY_RECURSOS;
 	mensaje->PayLoadLength = sizeof(char);
 	mensaje->Payload = "0";
 	enviarMensaje(*socketPersonaje,mensaje);
+	free(unRecurso);
 	free(mensaje);
 	return 0;
 }
@@ -290,7 +287,7 @@ int realizarMovimiento(Posicion* posicion, Personaje* personaje) {
 }
 
 int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje) {
-	log_debug(logger, "Se consulta la ubicacion de una caja.");
+	log_debug(logger, "Se consulta la ubicacion de una caja.(%s)",mensajeARecibir->Payload);
 	ITEM_NIVEL* caja = buscarCaja(mensajeARecibir->Payload);
 	Posicion* posicion = malloc(sizeof(Posicion));
 	posicion->x = caja->posx;
@@ -300,7 +297,7 @@ int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje)
 	mensajeAEnviar->PayLoadLength = sizeof(Posicion);
 	mensajeAEnviar->Payload = posicion;
 	enviarMensaje(*socketConPersonaje, mensajeAEnviar);
-	log_debug(logger, "La caja consultada esta en X:(%d) Y:(%d)",posicion->x,posicion->y);
+	log_debug(logger, "La caja (%c) esta en X:(%d) Y:(%d)",caja->id,posicion->x,posicion->y);
 	free(posicion);
 	free(mensajeAEnviar);
 	return EXIT_SUCCESS;
@@ -311,7 +308,6 @@ ITEM_NIVEL* buscarCaja(char* id) {
 		char* idABuscar = string_substring_until(&(recursoLista->id), 1);
 		return string_equals_ignore_case(idABuscar, id);
 	}
-	log_debug(logger,"Se busca el recurso (%s)",id);
 	return list_find(nivel->items, (void*) esElRecurso);
 }
 
@@ -328,9 +324,9 @@ void liberarRecursos(Personaje* personaje){
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).",recurso);
 		ITEM_NIVEL* caja=buscarCaja(recurso);
 		pthread_mutex_lock(&semaforo_listaNiveles);
-		//sumarRecurso(itemsEnNivel,*recurso);
 		caja->quantity++;
 		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias",caja->id,caja->quantity);
+		free(recurso);
 		pthread_mutex_unlock(&semaforo_listaNiveles);
 	}
 
