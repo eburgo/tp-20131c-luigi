@@ -18,6 +18,7 @@
 #define MOVIMIENTO_FINALIZADO 3
 #define BLOQUEADO 8
 #define FINALIZADO 4
+#define OBTUVO_RECURSO 6
 
 int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
@@ -32,9 +33,9 @@ pthread_mutex_t semaforo_listos = PTHREAD_MUTEX_INITIALIZER;
 
 int iniciarPlanificador(Planificador* planificador) {
 	pthread_t threadRecibir, threadManejar;
-	log_debug(loggerOrquestador,"Se procede a generar hilo de recepcion de personajes para planificador (%s)",planificador->nombreNivel);
+	log_debug(loggerOrquestador, "Se procede a generar hilo de recepcion de personajes para planificador (%s)", planificador->nombreNivel);
 	pthread_create(&threadRecibir, NULL, (void*) recibirPersonajes, planificador);
-	log_debug(loggerOrquestador,"Se procede a generar hilo de manejo de personajes para planificador (%s)",planificador->nombreNivel);
+	log_debug(loggerOrquestador, "Se procede a generar hilo de manejo de personajes para planificador (%s)", planificador->nombreNivel);
 	pthread_create(&threadManejar, NULL, (void*) manejarPersonajes, planificador);
 	pthread_join(threadRecibir, NULL );
 	pthread_join(threadManejar, NULL );
@@ -46,24 +47,23 @@ int recibirPersonajes(Planificador *planificador) {
 	MPS_MSG *mensaje;
 	char nombreOrigen[16] = "PLANIFICADOR - ";
 	char* nombreLog = strcat(nombreOrigen, planificador->nombreNivel);
-	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true,
-			LOG_LEVEL_TRACE);
+	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true, LOG_LEVEL_TRACE);
 	while (1) {
 		socketNuevaConexion = malloc(sizeof(int));
-		log_debug(log,"Se procede a escuchar conexiones de personajes en el planificador (%s) en el socket (%d)",planificador->nombreNivel,planificador->socketEscucha);
+		log_debug(log, "Se procede a escuchar conexiones de personajes en el planificador (%s) en el socket (%d)", planificador->nombreNivel, planificador->socketEscucha);
 		if ((*socketNuevaConexion = accept(planificador->socketEscucha, NULL, 0)) < 0) {
 			log_error(log, "Error al aceptar una conexión.");
 			return EXIT_FAILURE;
 		}
 		mensaje = malloc(sizeof(MPS_MSG));
 		recibirMensaje(*socketNuevaConexion, mensaje);
-		log_debug(log,"El personaje (%s) entro al nivel",(char*) mensaje->Payload);
+		log_debug(log, "El personaje (%s) entro al nivel", (char*) mensaje->Payload);
 		Personaje *personaje = malloc(sizeof(Personaje));
 		personaje->simbolo = (char*) mensaje->Payload;
 		personaje->quantum = quantumDefault;
 		personaje->socket = *socketNuevaConexion;
 
-		log_debug(log,"El personaje (%s) se encolara a la cola de listos",personaje->simbolo);
+		log_debug(log, "El personaje (%s) se encolara a la cola de listos", personaje->simbolo);
 		pthread_mutex_lock(&semaforo_listos);
 		list_add(planificador->personajes, personaje);
 		queue_push(planificador->listos, personaje);
@@ -80,46 +80,51 @@ int manejarPersonajes(Planificador *planificador) {
 	MPS_MSG *mensaje = malloc(sizeof(MPS_MSG));
 	char nombreOrigen[16] = "PLANIFICADOR - ";
 	char* nombreLog = strcat(nombreOrigen, planificador->nombreNivel);
-	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true,
-				LOG_LEVEL_TRACE);
+	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true, LOG_LEVEL_TRACE);
 	while (1) {
 		while (queue_is_empty(planificador->listos)) {
-			log_debug(log,"Esperando personajes");
+			log_debug(log, "Esperando personajes");
 			sleep(5);
 		}
 
 		Personaje *personaje = queue_peek(planificador->listos);
-		log_debug(log,"Personaje que se movera (%s)",personaje->simbolo);
+		log_debug(log, "Personaje que se movera (%s)", personaje->simbolo);
 
-		log_debug(log,"Notificando movimiento permitido a (%s)",personaje->simbolo);
+		log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 		notificarMovimientoPermitido(personaje);
 		recibirMensaje(personaje->socket, mensaje);
-		log_debug(log,"Mensaje recibido de (%s) es el descriptor (%d)",personaje->simbolo,mensaje->PayloadDescriptor);
+		log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
 		while (personaje->quantum > 1 && mensaje->PayloadDescriptor == MOVIMIENTO_FINALIZADO) {
 
 			personaje->quantum--;
 			sleep(tiempoAccion);
-			log_debug(log,"Notificando movimiento permitido a (%s)",personaje->simbolo);
+			log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 			notificarMovimientoPermitido(personaje);
 			recibirMensaje(personaje->socket, mensaje);
-			log_debug(log,"Mensaje recibido de (%s) es el descriptor (%d)",personaje->simbolo,mensaje->PayloadDescriptor);
+			log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
 		}
 		switch (mensaje->PayloadDescriptor) {
 		case BLOQUEADO:
-			log_debug(log,"El personaje (%s) se bloqueo",personaje->simbolo);
+			log_debug(log, "El personaje (%s) se bloqueo", personaje->simbolo);
 			queue_pop(planificador->listos);
 			list_add(planificador->bloqueados, personaje);
 			break;
 		case FINALIZADO:
-			log_debug(log,"el personaje (%s) finalizo el nivel",personaje->simbolo);
+			log_debug(log, "el personaje (%s) finalizo el nivel", personaje->simbolo);
 			queue_pop(planificador->listos);
 			close(personaje->socket);
 			break;
-		default:
-			log_debug(log,"Al personaje (%s) se le termino el quantum",personaje->simbolo);
+		case OBTUVO_RECURSO:
+			log_debug(log, "El personaje (%s) obtuvo un recurso, finaliza su quantum automaticamente.", personaje->simbolo);
 			queue_pop(planificador->listos);
-			personaje->quantum=quantumDefault;
-			queue_push(planificador->listos,personaje);
+			personaje->quantum = quantumDefault;
+			queue_push(planificador->listos, personaje);
+			break;
+		default:
+			log_debug(log, "Al personaje (%s) se le termino el quantum", personaje->simbolo);
+			queue_pop(planificador->listos);
+			personaje->quantum = quantumDefault;
+			queue_push(planificador->listos, personaje);
 			break;
 		}
 		sleep(tiempoAccion);
