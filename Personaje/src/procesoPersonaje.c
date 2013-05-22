@@ -34,7 +34,7 @@ int levantarPersonaje(char* path);
 // Enviar un mensaje al nivel y a su planificador notificando de su finalizacion
 void notificarIngresoAlNivel(int socketNivel);
 // Consulta la ubicacion de una caja de recursos
-void consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion);
+int consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion);
 // Espera un mensaje departe del planificador para poder realizar un movimiento
 int esperarConfirmacionDelPlanificador(int socketPlanificador);
 // Realiza la logica del movimiento y le avisa al nivel a donde moverse
@@ -79,6 +79,7 @@ int socketNivel;
 #define SIN_RECURSOS 6
 #define CON_RECURSOS 7
 #define OBTUVO_RECURSO 6 // descriptor que envia al planificador si obtuvo un recurso
+#define CAJAFUERALIMITE 8 // mensaje q recibe en la consulta de la ubicacion de una caja si la misma esta fuera del limite
 int main(int argc, char *argv[]) {
 
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
@@ -136,7 +137,7 @@ void notificarIngresoAlNivel(int socketNivel) {
 	free(mensaje);
 }
 
-void consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion) {
+int consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
 	mensaje->PayloadDescriptor = UBICACION_CAJA;
@@ -144,9 +145,17 @@ void consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicio
 	mensaje->Payload = &cajaABuscar;
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensajeARecibir);
+	if (mensajeARecibir->PayloadDescriptor == CAJAFUERALIMITE) {
+		log_debug(logger, "El personaje %s no puede acceder a la caja (%c) porque esta fuera del limite", personaje->nombre,cajaABuscar);
+		free(mensaje);
+		free(mensajeARecibir);
+		return 0;
+	}
 	*posicion = *(Posicion*) mensajeARecibir->Payload;
+	log_debug(logger, "La caja necesaria esta en X:(%d) Y:(%d)", posicion->x, posicion->y);
 	free(mensaje);
 	free(mensajeARecibir);
+	return 1;
 }
 
 int esperarConfirmacionDelPlanificador(int socketPlanificador) {
@@ -252,18 +261,21 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	esperarConfirmacion(socketNivel);
 	notificarIngresoAlNivel(socketPlanificador);
 	esperarConfirmacion(socketPlanificador);
+	int ubicacionCorrecta;
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)", personaje->nombre, nivel->nombre);
 	while (!queue_is_empty(nivel->objetos)) {
-
-		char *cajaABuscar = queue_pop(nivel->objetos);
-		log_debug(logger, "Consultando ubicacion de la proxima caja del recurso (%s)", cajaABuscar);
-		consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
-		log_debug(logger, "La caja necesaria esta en X:(%d) Y:(%d)", posicion->x, posicion->y);
-		if (estaEnPosicionDeLaCaja(posicion, posicionActual)) {
+		char *cajaABuscar;
+		ubicacionCorrecta = 0;
+		while (!ubicacionCorrecta && !queue_is_empty(nivel->objetos)) {
+			cajaABuscar = queue_pop(nivel->objetos);
+			log_debug(logger, "Consultando ubicacion de la proxima caja del recurso (%s)", cajaABuscar);
+			ubicacionCorrecta = consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
+		}
+		if (estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 			esperarConfirmacionDelPlanificador(socketPlanificador);
 			procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, socketPlanificador);
 		}
-		while (!estaEnPosicionDeLaCaja(posicion, posicionActual)) {
+		while (!estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 
 			log_debug(logger, "El personaje:(%s) esta a la espera de la confirmacion de movimiento", personaje->nombre);
 

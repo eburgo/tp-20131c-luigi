@@ -53,7 +53,7 @@ Nivel* nivel;
 t_log* logger;
 struct sockaddr_in sAddr;
 ITEM_NIVEL *itemsEnNivel = NULL;
-
+Posicion* limiteMapa;
 pthread_mutex_t semaforo_listaNiveles = PTHREAD_MUTEX_INITIALIZER;
 
 #define IP "127.0.0.1";
@@ -67,6 +67,7 @@ pthread_mutex_t semaforo_listaNiveles = PTHREAD_MUTEX_INITIALIZER;
 #define REGISTRAR_NIVEL 2
 #define SIN_RECURSOS 6
 #define HAY_RECURSOS 7
+#define CAJAFUERALIMITE 8
 
 // A recibir
 #define MUERTE_PERSONAJE 7
@@ -88,13 +89,24 @@ int main(int argc, char **argv) {
 	log_debug(logger, "Levantando configuracion en el path:%s", argv[1]);
 	nivel = levantarConfiguracion(argv[1]);
 	log_debug(logger, "Configuracion del nivel levantada correctamente.");
+
+	log_debug(logger, "Iniciando el GUI del Nivel (%s)", nivel->nombre);
 	nivel_gui_inicializar();
+	limiteMapa = malloc(sizeof(Posicion));
+	nivel_gui_get_area_nivel(&limiteMapa->x, &limiteMapa->y);
 	list_iterate(nivel->items, (void *) crearCajasInit);
+	nivel_gui_dibujar(itemsEnNivel);
+	log_debug(logger, "El GUI del Nivel (%s) levantada correctamente, limites X:(%d) Y:(%d)", nivel->nombre,limiteMapa->x,limiteMapa->y);
 
 	log_debug(logger, "Levantando el servidor del Nivel:%s", nivel->nombre);
 	socketEscucha = malloc(sizeof(int));
 	miPuerto = realizarConexion(socketEscucha);
 	log_debug(logger, "Servidor del nivel %s se levanto con exito en el puerto:%d", nivel->nombre, miPuerto);
+
+	log_destroy(logger);
+	char nombreOrigen[16] = "NIVEL - ";
+	char* nombreLog = strcat(nombreOrigen, nivel->nombre);
+	logger = log_create("/home/utnso/nivel.log", nombreLog, false, LOG_LEVEL_TRACE);
 
 	log_debug(logger, "Conectando al %s con el Orquestador, IpNivel: %s PuertoNivel: %d", nivel->nombre, nivel->ip, miPuerto);
 	socketOrquestador = conectarConOrquestador(miPuerto);
@@ -273,10 +285,19 @@ int realizarMovimiento(Posicion* posicion, Personaje* personaje) {
 int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje) {
 	log_debug(logger, "Se consulta la ubicacion de una caja.(%s)", mensajeARecibir->Payload);
 	ITEM_NIVEL* caja = buscarCaja(mensajeARecibir->Payload);
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	if (limiteMapa->x < caja->posx || limiteMapa->y < caja->posy) {
+		mensajeAEnviar->PayloadDescriptor = CAJAFUERALIMITE;
+		mensajeAEnviar->PayLoadLength = sizeof(char);
+		mensajeAEnviar->Payload = "8";
+		enviarMensaje(*socketConPersonaje, mensajeAEnviar);
+		free(mensajeAEnviar);
+		log_debug(logger, "La caja (%c) esta fuera del limite en X:(%d) Y:(%d)", caja->id, caja->posx, caja->posy);
+		return EXIT_SUCCESS;
+	}
 	Posicion* posicion = malloc(sizeof(Posicion));
 	posicion->x = caja->posx;
 	posicion->y = caja->posy;
-	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = UBICACION_CAJA;
 	mensajeAEnviar->PayLoadLength = sizeof(Posicion);
 	mensajeAEnviar->Payload = posicion;
