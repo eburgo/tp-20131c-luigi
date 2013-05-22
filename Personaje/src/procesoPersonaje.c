@@ -46,7 +46,7 @@ void recursoObtenido(int socketPlanificador);
 // Pide un recurso al nivel
 int pedirRecurso(char recursoAPedir, int socketNivel);
 // Notifica al planificador del bloqueo
-void avisarDelBloqueo(int socketPlanificador,char* recursoPedido);
+void avisarDelBloqueo(int socketPlanificador, char* recursoPedido);
 // Espera que el planificador lo desbloquee.
 void esperarDesbloqueo(int socketPlanificador);
 // Avisa al nivel que termino el nivel
@@ -113,6 +113,7 @@ int main(int argc, char *argv[]) {
 void manejarSenial(int n) {
 	switch (n) {
 	case SIGUSR1:
+		log_debug(logger, "El personaje (%s) recibio la señal SIGUSR1. Vidas actuales: (%d)", personaje->nombre, personaje->vidas);
 		personaje->vidas = personaje->vidas + 1;
 		break;
 	case SIGTERM:
@@ -222,7 +223,7 @@ int pedirRecurso(char recursoAPedir, int socketNivel) {
 	free(mensaje);
 	return 1;
 }
-void avisarDelBloqueo(int socketPlanificador,char* recursoPedido) {
+void avisarDelBloqueo(int socketPlanificador, char* recursoPedido) {
 	log_debug(logger, "El personaje:(%s) procede a avisar que esta bloqueado.", personaje->nombre);
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = BLOQUEO_PERSONAJE;
@@ -259,6 +260,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 		consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
 		log_debug(logger, "La caja necesaria esta en X:(%d) Y:(%d)", posicion->x, posicion->y);
 		if (estaEnPosicionDeLaCaja(posicion, posicionActual)) {
+			esperarConfirmacionDelPlanificador(socketPlanificador);
 			procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, socketPlanificador);
 		}
 		while (!estaEnPosicionDeLaCaja(posicion, posicionActual)) {
@@ -456,7 +458,7 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, in
 	recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
 	if (!recursoAsignado) {
 		log_debug(logger, "El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible", personaje->nombre, cajaABuscar);
-		avisarDelBloqueo(socketPlanificador,cajaABuscar);
+		avisarDelBloqueo(socketPlanificador, cajaABuscar);
 		esperarDesbloqueo(socketPlanificador);
 		log_debug(logger, "El personaje (%s) fue desbloqueado, se continua con el nivel.", personaje->nombre);
 	} else {

@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 	int *socketEscucha;
 	int socketOrquestador;
 	int miPuerto;
-	logger = log_create("/home/utnso/nivel.log", "NIVEL", true, LOG_LEVEL_TRACE);
+	logger = log_create("/home/utnso/nivel.log", "NIVEL", false, LOG_LEVEL_TRACE);
 	log_info(logger, "Log creado con exito, se procede a loguear el proceso Nivel");
 
 	log_debug(logger, "Chequeando el path del nivel...");
@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 	log_debug(logger, "Levantando configuracion en el path:%s", argv[1]);
 	nivel = levantarConfiguracion(argv[1]);
 	log_debug(logger, "Configuracion del nivel levantada correctamente.");
-
+	nivel_gui_inicializar();
 	list_iterate(nivel->items, (void *) crearCajasInit);
 
 	log_debug(logger, "Levantando el servidor del Nivel:%s", nivel->nombre);
@@ -187,6 +187,7 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ", personaje->simbolo);
 	enviarMensaje(*socketConPersonaje, &mensajeInicializar);
 	while (terminoElNivel == 0) {
+		nivel_gui_dibujar(itemsEnNivel);
 		recibirMensaje(*socketConPersonaje, &mensajeARecibir);
 
 		log_debug(logger, "Se recibio un mensaje tipo: %d", mensajeARecibir.PayloadDescriptor);
@@ -247,7 +248,7 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 		return 0;
 	}
 	pthread_mutex_lock(&semaforo_listaNiveles);
-	caja->quantity--;
+	restarRecurso(itemsEnNivel, caja->id);
 	log_debug(logger, "Al personaje (%s) se le dio el recurso (%c) del que quedan(%d)", personaje->simbolo, caja->id, caja->quantity);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
 	queue_push(personaje->recursosObtenidos, string_substring_until(&caja->id, 1));
@@ -307,7 +308,8 @@ void liberarRecursos(Personaje* personaje) {
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).", recurso);
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforo_listaNiveles);
-		caja->quantity++;
+		sumarRecurso(itemsEnNivel, caja->id);
+		nivel_gui_dibujar(itemsEnNivel);
 		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id, caja->quantity);
 		free(recurso);
 		pthread_mutex_unlock(&semaforo_listaNiveles);
