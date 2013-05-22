@@ -264,14 +264,11 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	caja->quantity--;
 	log_debug(logger,"Al personaje (%s) se le dio el recurso (%c) del que quedan(%d)",personaje->simbolo, caja->id,caja->quantity);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
-	char* unRecurso = malloc(sizeof(char));
-	*unRecurso = caja->id;
-	queue_push(personaje->recursosObtenidos,string_substring_until(unRecurso, 1));
+	queue_push(personaje->recursosObtenidos,string_substring_until(&caja->id, 1));
 	mensaje->PayloadDescriptor = HAY_RECURSOS;
 	mensaje->PayLoadLength = sizeof(char);
 	mensaje->Payload = "0";
 	enviarMensaje(*socketPersonaje,mensaje);
-	free(unRecurso);
 	free(mensaje);
 	return 0;
 }
