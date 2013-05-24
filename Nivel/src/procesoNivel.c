@@ -36,7 +36,7 @@ int inicializarPersonaje(char* simbolo);
 //Se fija si el recurso esta disponible y le responde por si o por no.
 int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje);
 //Se comunicara con el personaje.
-int interactuarConPersonaje(int* socketNuevaConexion);
+int interactuarConPersonaje(int* socketNuevaConexion,int socketOrquestador);
 //En caso de que se ingrese un recurso qe no existe.
 int informarError(int* socketConPersonaje);
 //Realiza el movimiento del Personaje
@@ -45,8 +45,10 @@ int realizarMovimiento(Posicion* posicion, Personaje* personaje);
 ITEM_NIVEL* buscarCaja(char* cajaABuscar);
 // da un recurso si el nivel los tiene
 int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje);
-// Libera los recursos
-void liberarRecursos(Personaje* personaje);
+// Libera los recursosy le avisa al orquestador de los recursos liberados.
+void liberarRecursos(Personaje* personaje, int socketOrquestador);
+
+
 
 //Globales
 Nivel* nivel;
@@ -68,6 +70,7 @@ pthread_mutex_t semaforo_listaNiveles = PTHREAD_MUTEX_INITIALIZER;
 #define SIN_RECURSOS 6
 #define HAY_RECURSOS 7
 #define CAJAFUERALIMITE 8
+#define RECURSOS_LIBERADOS 9
 
 // A recibir
 #define MUERTE_PERSONAJE 7
@@ -184,7 +187,7 @@ int comunicarPersonajes(int *socketEscucha) {
 	}
 	return 0;
 }
-int interactuarConPersonaje(int* socketConPersonaje) {
+int interactuarConPersonaje(int* socketConPersonaje,int socketOrquestador) {
 	int terminoElNivel = 0;
 	MPS_MSG mensajeARecibir;
 	MPS_MSG mensajeInicializar;
@@ -216,10 +219,12 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 			break;
 		case MUERTE_PERSONAJE:
 			log_debug(logger, "El personaje ( %s ) murio, se procede a liberar recursos.", personaje->simbolo);
+			liberarRecursos(personaje,socketOrquestador);
 			terminoElNivel = 1;
 			break;
 		case FINALIZAR:
 			log_debug(logger, "El personaje (%s) termino el nivel satisfactoriamente, se procede a liberar recursos.", personaje->simbolo);
+			liberarRecursos(personaje,socketOrquestador);
 			terminoElNivel = 1;
 			break;
 		default:
@@ -227,7 +232,7 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 			break;
 		}
 	}
-	liberarRecursos(personaje);
+	liberarRecursos(personaje,socketOrquestador);
 	close(*socketConPersonaje);
 	free(personaje);
 	return 0;
@@ -323,10 +328,14 @@ int inicializarPersonaje(char* simbolo) {
 	return EXIT_SUCCESS;
 }
 
-void liberarRecursos(Personaje* personaje) {
+void liberarRecursos(Personaje* personaje,int socketOrquestador) {
 	while (!queue_is_empty(personaje->recursosObtenidos)) {
+		MPS_MSG recursosLiberados;
+		recursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
+		recursosLiberados.PayLoadLength =2;
 		char* recurso = queue_pop(personaje->recursosObtenidos);
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).", recurso);
+		recursosLiberados.Payload = recurso;
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforo_listaNiveles);
 		sumarRecurso(itemsEnNivel, caja->id);
@@ -334,6 +343,9 @@ void liberarRecursos(Personaje* personaje) {
 		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id, caja->quantity);
 		free(recurso);
 		pthread_mutex_unlock(&semaforo_listaNiveles);
+		log_debug(logger, "Se le va a informar al Orquestador que el recurso:(%s) se libero.", recursosLiberados.Payload);
+		//recursosLiberados.Payload no esta guardando el char recurso.
+		enviarMensaje(socketOrquestador, &recursosLiberados);
 	}
 
 }

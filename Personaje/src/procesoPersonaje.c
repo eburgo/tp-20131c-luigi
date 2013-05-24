@@ -316,7 +316,7 @@ void esperarDesbloqueo(int socketPlanificador) {
 int perderVida() {
 	if (sacarVida(personaje) > 0) {
 		log_debug(logger, "El personaje %s perdio una vida", personaje->nombre);
-		log_debug(logger, "Liberando recursos. Personaje:%s", personaje->nombre);
+		log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
 		liberarRecursos(socketNivel);
 		log_debug(logger, "Notificando muerte. Personaje:%s", personaje->nombre);
 		notificarMuerte(socketPlanificador);

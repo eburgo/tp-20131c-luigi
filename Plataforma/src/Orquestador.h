@@ -15,6 +15,7 @@
 #define REGISTRAR_NIVEL 2	//mensaje de un nivel
 #define PJ_BLOQUEADO 3
 #define RESOLVER_INTERBLOQUEO 4
+#define RECURSOS_LIBERADOS 9
 //#define MSJ_XX 5
 //#define MSJ_XX 6
 //#define MSJ_XX 7

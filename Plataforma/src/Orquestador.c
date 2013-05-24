@@ -111,6 +111,12 @@ void manejarConexion(int* socket) {
 		log_error(loggerOrquestador, "Socket (%d) - Info enviada con exito",*socket);
 		free(nivel);
 		break;
+	case RECURSOS_LIBERADOS:
+		//recibirMensaje(*socket,&mensaje);
+		//mensaje.Payload
+		//buscar en la cola de procesos bloqueados cual de ellos puedo liberar.
+
+		break;
 	default:
 		log_error(loggerOrquestador, "Tipo de mensaje desconocido.");
 		enviarMsjError(socket, "Tipo de mensaje desconocido.");
