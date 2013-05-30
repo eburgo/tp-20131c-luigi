@@ -154,13 +154,10 @@ int notificarMovimientoPermitido(Personaje* personaje) {
 
 void sacarPersonaje(Planificador *planificador,Personaje *personaje){
 	int esElPersonaje(Personaje *pj){
-		//char* idABuscar = string_substring_until(pj->simbolo, 1);
 		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
 	}
 	Personaje *pj=NULL;
-	printf("!!!!!  la lista tiene: %d!!!!!!!!!!!1\n",list_size(planificador->bloqueados));
 	pj=list_remove_by_condition(planificador->bloqueados,(void*)esElPersonaje);
-	printf("!!!!!  la lista tiene: %d!!!!!!!!!!!!!!!1\n",list_size(planificador->bloqueados));
 	if(!pj){
 		pj=queue_pop(planificador->listos);
 	}
