@@ -12,6 +12,7 @@
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
 #include <commons/socket.h>
+#include <commons/string.h>
 #include "Planificador.h"
 
 #define MOVIMIENTO_PERMITIDO 1
@@ -19,10 +20,12 @@
 #define BLOQUEADO 8
 #define FINALIZADO 4
 #define OBTUVO_RECURSO 6
+#define MUERTE_PERSONAJE 7
 
 int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
 int notificarMovimientoPermitido(Personaje *personaje);
+void sacarPersonaje(Planificador *planificador,Personaje *personaje);
 
 //Globales
 extern int quantumDefault;
@@ -121,6 +124,11 @@ int manejarPersonajes(Planificador *planificador) {
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
 			break;
+		case MUERTE_PERSONAJE:
+			log_debug(log, "El personaje  murio. Lo sacamos del planificador.");
+			sacarPersonaje(planificador, personaje);
+			close(personaje->socket);
+			break;
 		default:
 			log_debug(log, "Al personaje (%s) se le termino el quantum", personaje->simbolo);
 			queue_pop(planificador->listos);
@@ -142,4 +150,20 @@ int notificarMovimientoPermitido(Personaje* personaje) {
 
 	enviarMensaje(personaje->socket, &mensaje);
 	return 0;
+}
+
+void sacarPersonaje(Planificador *planificador,Personaje *personaje){
+	int esElPersonaje(Personaje *pj){
+		//char* idABuscar = string_substring_until(pj->simbolo, 1);
+		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
+	}
+	Personaje *pj=NULL;
+	printf("!!!!!  la lista tiene: %d!!!!!!!!!!!1\n",list_size(planificador->bloqueados));
+	pj=list_remove_by_condition(planificador->bloqueados,(void*)esElPersonaje);
+	printf("!!!!!  la lista tiene: %d!!!!!!!!!!!!!!!1\n",list_size(planificador->bloqueados));
+	if(!pj){
+		pj=queue_pop(planificador->listos);
+	}
+	notificarMovimientoPermitido(pj);
+	free(pj);
 }

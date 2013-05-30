@@ -332,22 +332,23 @@ void liberarRecursos(Personaje* personaje,int socketOrquestador) {
 	while (!queue_is_empty(personaje->recursosObtenidos)) {
 		MPS_MSG recursosLiberados;
 		recursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
-		recursosLiberados.PayLoadLength =2;
+		recursosLiberados.PayLoadLength = 2;
 		char* recurso = queue_pop(personaje->recursosObtenidos);
-		log_debug(logger, "Se va a liberar una instancia del recurso(%s).", recurso);
+		log_debug(logger, "Se va a liberar una instancia del recurso(%s).",recurso);
 		recursosLiberados.Payload = recurso;
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforo_listaNiveles);
 		sumarRecurso(itemsEnNivel, caja->id);
 		nivel_gui_dibujar(itemsEnNivel);
-		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id, caja->quantity);
+		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id,caja->quantity);
 		free(recurso);
 		pthread_mutex_unlock(&semaforo_listaNiveles);
-		log_debug(logger, "Se le va a informar al Orquestador que el recurso:(%s) se libero.", recursosLiberados.Payload);
+		log_debug(logger,"Se le va a informar al Orquestador que el recurso:(%s) se libero.",recursosLiberados.Payload);
 		//recursosLiberados.Payload no esta guardando el char recurso.
 		enviarMensaje(socketOrquestador, &recursosLiberados);
 	}
-
+	log_debug(logger, "El personaje(%s) fue eliminado del nivel.",personaje->simbolo);
+	BorrarItem(&itemsEnNivel, *personaje->simbolo);
 }
 
 void crearCajasInit(ITEM_NIVEL* item) {

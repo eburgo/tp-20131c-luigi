@@ -64,7 +64,6 @@ t_log* logger;
 char* path;
 int socketPlanificador;
 int socketNivel;
-
 //Tipos de mensaje a enviar
 #define UBICACION_CAJA 2 // Pide la ubicacion de la caja de recursos que necesita.
 #define AVISO_MOVIMIENTO 3 // Le avisa que se va a mover
@@ -318,8 +317,9 @@ int perderVida() {
 		log_debug(logger, "El personaje %s perdio una vida", personaje->nombre);
 		log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
 		liberarRecursos(socketNivel);
-		log_debug(logger, "Notificando muerte. Personaje:%s", personaje->nombre);
+		log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
 		notificarMuerte(socketPlanificador);
+		esperarConfirmacionDelPlanificador(socketPlanificador);
 		close(socketPlanificador);
 		close(socketNivel);
 		int resultado = procesar();
@@ -484,4 +484,3 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, in
 	}
 	return 0;
 }
-
