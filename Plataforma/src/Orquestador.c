@@ -14,6 +14,8 @@
 #include <commons/socket.h>
 #include "Orquestador.h"
 #include "Planificador.h"
+#include "inotify.h"
+
 
 pthread_mutex_t semaforo_niveles = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t semaforo_planificadores = PTHREAD_MUTEX_INITIALIZER;
@@ -21,7 +23,6 @@ pthread_mutex_t semaforo_planificadores = PTHREAD_MUTEX_INITIALIZER;
 t_dictionary *planificadores;
 t_dictionary *niveles;
 //t_queue *personajesBloqueados;
-
 t_log* loggerOrquestador;
 int quantumDefault=2;
 int tiempoAccion=2;
@@ -34,10 +35,10 @@ int iniciarOrquestador() {
 	int socketEscucha;
 	int *socketNuevaConexion;
 	pthread_t *thread;
+	pthread_t threadInotify;
 	//t_queue *colaHilos = queue_create();
 	niveles = dictionary_create();
 	planificadores = dictionary_create();
-
 	loggerOrquestador = log_create("/home/utnso/orquestador.log", "ORQUESTADOR", true,
 			LOG_LEVEL_TRACE);
 
@@ -47,6 +48,7 @@ int iniciarOrquestador() {
 	log_debug(loggerOrquestador, "Se levanta la configuracion de los planificadores.");
 	levantarConfiguracion("/home/utnso/git/tp-20131c-luigi/Plataforma/Planificador.config", &quantumDefault,&tiempoAccion);
 	log_debug(loggerOrquestador, "Quantum seteado a(%d), tiempoAccion seteado a(%d)",quantumDefault,tiempoAccion);
+	pthread_create(&threadInotify,NULL,(void*)inotify,NULL);
 	while (1) {
 		thread = malloc(sizeof(pthread_t));
 		socketNuevaConexion = malloc(sizeof(int));
@@ -181,6 +183,8 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	socketEscucha = malloc(sizeof(int));
 	pthread_t* thread = malloc(sizeof(pthread_t));
 	Planificador *planificador= malloc(sizeof(Planificador));
+	fd_set* set=malloc(sizeof(fd_set));
+	FD_ZERO(set);
 	planificador->nombreNivel=nombreNivel;
 	planificador->ip="127.0.0.1";
 	planificador->puerto=realizarConexion(socketEscucha);
@@ -188,6 +192,7 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	planificador->bloqueados=list_create();
 	planificador->personajes=list_create();
 	planificador->listos=queue_create();
+	planificador->set=set;
 	pthread_mutex_lock(&semaforo_planificadores);
 	dictionary_put(planificadores,planificador->nombreNivel,planificador);
 	pthread_mutex_unlock(&semaforo_planificadores);
