@@ -57,7 +57,8 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual);
 void esperarConfirmacion(int socket);
 //encapsula toda la logica de pedir recurso
 int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, int socketPlanificador);
-
+//copia los objetos de la cola 1 a la cola 2;
+void copiarCola(t_queue *cola1,t_queue *cola2);
 //Globales
 Personaje* personaje;
 t_log* logger;
@@ -254,6 +255,8 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	Nivel *nivel = queue_peek(personaje->listaNiveles);
 	Posicion* posicion = malloc(sizeof(Posicion));
 	Posicion* posicionActual = malloc(sizeof(Posicion));
+	t_queue *objetosABuscar=queue_create();
+	copiarCola(nivel->objetos,objetosABuscar);
 	posicionActual->x = 0;
 	posicionActual->y = 0;
 	notificarIngresoAlNivel(socketNivel);
@@ -262,11 +265,11 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	esperarConfirmacion(socketPlanificador);
 	int ubicacionCorrecta;
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)", personaje->nombre, nivel->nombre);
-	while (!queue_is_empty(nivel->objetos)) {
+	while (!queue_is_empty(objetosABuscar)) {
 		char *cajaABuscar;
 		ubicacionCorrecta = 0;
-		while (!ubicacionCorrecta && !queue_is_empty(nivel->objetos)) {
-			cajaABuscar = queue_pop(nivel->objetos);
+		while (!ubicacionCorrecta && !queue_is_empty(objetosABuscar)) {
+			cajaABuscar = queue_pop(objetosABuscar);
 			log_debug(logger, "Consultando ubicacion de la proxima caja del recurso (%s)", cajaABuscar);
 			ubicacionCorrecta = consultarUbicacionCaja(*cajaABuscar, socketNivel, posicion);
 		}
@@ -295,6 +298,23 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 	queue_pop(personaje->listaNiveles);
 	free(posicion);
 	free(nivel);
+}
+
+void copiarCola(t_queue *cola1,t_queue *cola2){
+	int i;
+	char *objeto;
+	char *objetocopia;
+	int size=queue_size(cola1);
+	printf("vamos a iterar:%d veces\n",size);
+	for(i=0;i<size;i++){
+		objeto=queue_pop(cola1);
+		objetocopia=malloc(sizeof(char)+1);
+		printf("el objeto:%d que tiene: %s\n",i,objeto);
+		strcpy(objetocopia,objeto);
+		printf("el objetocopia:%d que ahora tiene: %s\n",i,objetocopia);
+		queue_push(cola2,objetocopia);
+		queue_push(cola1,objeto);
+	}
 }
 
 int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual) {
