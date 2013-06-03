@@ -17,6 +17,7 @@ typedef struct{
 	t_list *bloqueados;
 	t_list *personajes; //por orden de llegada para saber cual matar en caso de bloqueo
 	t_queue *listos; //cola de listos
+	fd_set *set;
 
 }__attribute__((__packed__)) Planificador;
 

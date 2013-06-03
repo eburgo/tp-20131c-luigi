@@ -26,6 +26,7 @@ int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
 int notificarMovimientoPermitido(Personaje *personaje);
 void sacarPersonaje(Planificador *planificador,Personaje *personaje);
+extern pthread_key_t variable_key;
 
 //Globales
 extern int quantumDefault;
@@ -45,7 +46,6 @@ int iniciarPlanificador(Planificador* planificador) {
 	return 0;
 }
 int recibirPersonajes(Planificador *planificador) {
-
 	int *socketNuevaConexion;
 	MPS_MSG *mensaje;
 	char nombreOrigen[16] = "PLANIFICADOR - ";
@@ -69,9 +69,11 @@ int recibirPersonajes(Planificador *planificador) {
 		log_debug(log, "El personaje (%s) se encolara a la cola de listos", personaje->simbolo);
 		pthread_mutex_lock(&semaforo_listos);
 		list_add(planificador->personajes, personaje);
+		printf("\n\ntamaño de la lista (%d)!! \n\n",list_size(planificador->personajes));
 		queue_push(planificador->listos, personaje);
+		printf("\n\ntamaño de la cola (%d)!! \n\n",queue_size(planificador->listos));
+		FD_SET(*socketNuevaConexion, planificador->set);
 		pthread_mutex_unlock(&semaforo_listos);
-
 		enviarMensaje(personaje->socket, mensaje); //para confirmarle q inicializo bien;
 		free(socketNuevaConexion);
 		free(mensaje);
@@ -81,6 +83,9 @@ int recibirPersonajes(Planificador *planificador) {
 }
 int manejarPersonajes(Planificador *planificador) {
 	MPS_MSG *mensaje = malloc(sizeof(MPS_MSG));
+	fd_set readSet;
+	FD_ZERO(&readSet);
+	int i;
 	char nombreOrigen[16] = "PLANIFICADOR - ";
 	char* nombreLog = strcat(nombreOrigen, planificador->nombreNivel);
 	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true, LOG_LEVEL_TRACE);
@@ -95,6 +100,20 @@ int manejarPersonajes(Planificador *planificador) {
 
 		log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 		notificarMovimientoPermitido(personaje);
+		readSet=*planificador->set;
+			select(200, &readSet, NULL, NULL, NULL );
+			for (i = 0; i < list_size(planificador->personajes); i++) {
+				Personaje *personajeAux = list_get(planificador->personajes, i);
+				printf("\n\ndentro del select personajeAux socket(%d)\n\n",personajeAux->socket);
+				if (personaje->socket == personajeAux->socket){
+					printf("\n\nmensaje del personaje que se esta moviendo\n\n");
+					break;
+				}
+				else if (FD_ISSET(personajeAux->socket, &readSet)) {
+					printf("\n\n\n UN MENSAJE DE OTRO PERSONAJE!!! \n\n\n");
+				}
+			}
+
 		recibirMensaje(personaje->socket, mensaje);
 		log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
 		while (personaje->quantum > 1 && mensaje->PayloadDescriptor == MOVIMIENTO_FINALIZADO) {
@@ -115,7 +134,7 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case FINALIZADO:
 			log_debug(log, "el personaje (%s) finalizo el nivel", personaje->simbolo);
-			queue_pop(planificador->listos);
+			sacarPersonaje(planificador, personaje);
 			close(personaje->socket);
 			break;
 		case OBTUVO_RECURSO:
@@ -161,6 +180,10 @@ void sacarPersonaje(Planificador *planificador,Personaje *personaje){
 	if(!pj){
 		pj=queue_pop(planificador->listos);
 	}
+	pj=list_remove_by_condition(planificador->personajes,(void*)esElPersonaje);
+	FD_CLR(pj->socket,planificador->set);
 	notificarMovimientoPermitido(pj);
 	free(pj);
+	printf("\n\ntamaño de la lista (%d)!! \n\n",list_size(planificador->personajes));
+	printf("\n\ntamaño de la cola (%d)!! \n\n",queue_size(planificador->listos));
 }

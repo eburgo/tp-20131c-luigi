@@ -56,7 +56,7 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual);
 // Espera la confirmacion.
 void esperarConfirmacion(int socket);
 //encapsula toda la logica de pedir recurso
-int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, int socketPlanificador);
+int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar,int socketPlanificador);
 //copia los objetos de la cola 1 a la cola 2;
 void copiarCola(t_queue *cola1,t_queue *cola2);
 //Globales
@@ -275,7 +275,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 		}
 		if (estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 			esperarConfirmacionDelPlanificador(socketPlanificador);
-			procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, socketPlanificador);
+			procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador);
 		}
 		while (!estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 
@@ -287,7 +287,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 			realizarMovimiento(posicionActual, posicion, socketNivel);
 			log_debug(logger, "El personaje:(%s) se movio satisfactoriamente", personaje->nombre);
 			if (estaEnPosicionDeLaCaja(posicion, posicionActual)) {
-				procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, socketPlanificador);
+				procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador);
 			} else {
 				movimientoRealizado(socketPlanificador);
 			}
@@ -484,7 +484,7 @@ int levantarPersonaje(char* path) {
 	return EXIT_SUCCESS;
 }
 
-int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, int socketPlanificador) {
+int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar, int socketPlanificador) {
 	int recursoAsignado;
 	log_debug(logger, "El personaje: (%s) pedira el recurso (%s) porque llego a la caja correspondiente.", personaje->nombre, cajaABuscar);
 	recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
@@ -495,7 +495,8 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, in
 		log_debug(logger, "El personaje (%s) fue desbloqueado, se continua con el nivel.", personaje->nombre);
 	} else {
 		log_debug(logger, "El personaje: (%s) recibio el recurso(%s) con exito!", personaje->nombre, cajaABuscar);
-		if (queue_is_empty(nivel->objetos)) {
+		if (queue_is_empty(objetosABuscar)) {
+			log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
 			nivelTerminado(socketPlanificador);
 			close(socketPlanificador);
 		} else {
