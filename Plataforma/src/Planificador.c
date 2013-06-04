@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <commons/log.h>
 #include <commons/collections/queue.h>
@@ -33,6 +34,7 @@ extern int quantumDefault;
 extern int tiempoAccion;
 extern t_log* loggerOrquestador;
 
+sem_t sem_test;
 pthread_mutex_t semaforo_listos = PTHREAD_MUTEX_INITIALIZER;
 
 int iniciarPlanificador(Planificador* planificador) {
@@ -74,6 +76,7 @@ int recibirPersonajes(Planificador *planificador) {
 		printf("\n\ntamaño de la cola (%d)!! \n\n",queue_size(planificador->listos));
 		FD_SET(*socketNuevaConexion, planificador->set);
 		pthread_mutex_unlock(&semaforo_listos);
+		sem_post(&sem_test);
 		enviarMensaje(personaje->socket, mensaje); //para confirmarle q inicializo bien;
 		free(socketNuevaConexion);
 		free(mensaje);
@@ -90,11 +93,9 @@ int manejarPersonajes(Planificador *planificador) {
 	char* nombreLog = strcat(nombreOrigen, planificador->nombreNivel);
 	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true, LOG_LEVEL_TRACE);
 	while (1) {
-		while (queue_is_empty(planificador->listos)) {
-			log_debug(log, "Esperando personajes");
-			sleep(5);
-		}
 
+		log_debug(log, "Esperando personajes");
+		sem_wait(&sem_test);
 		Personaje *personaje = queue_peek(planificador->listos);
 		log_debug(log, "Personaje que se movera (%s)", personaje->simbolo);
 
@@ -142,6 +143,7 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
+			sem_post(&sem_test);
 			break;
 		case MUERTE_PERSONAJE:
 			log_debug(log, "El personaje  murio. Lo sacamos del planificador.");
@@ -153,6 +155,7 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
+			sem_post(&sem_test);
 			break;
 		}
 		sleep(tiempoAccion);
