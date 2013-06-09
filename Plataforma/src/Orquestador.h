@@ -16,11 +16,10 @@
 #define PJ_BLOQUEADO 3
 #define RESOLVER_INTERBLOQUEO 4
 #define RECURSOS_LIBERADOS 9
+#define CHEQUEO_INTERBLOQUEO 8
 //#define MSJ_XX 5
 //#define MSJ_XX 6
 //#define MSJ_XX 7
-//#define MSJ_XX 8
-//#define MSJ_XX 9
 
 // tal cual lo q dice. Se usa para lanzar en un hilo.
 int iniciarOrquestador();
@@ -37,5 +36,9 @@ int registrarNivel(NivelDatos *nivelDatos, int socket) ;
 int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion);
 //levanta la configuracion de los planificadores donde se inicializa quantum y tiempo de accion.
 void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion);
+//Se queda escuchando mensajes del nivel
+void esperarMensajesDeNivel(char* nombreNivel, int socket);
+
+
 
 
