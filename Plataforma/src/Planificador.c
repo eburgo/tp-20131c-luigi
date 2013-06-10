@@ -27,7 +27,6 @@ int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
 int notificarMovimientoPermitido(Personaje *personaje);
 void sacarPersonaje(Planificador *planificador,Personaje *personaje);
-extern pthread_key_t variable_key;
 
 //Globales
 extern int quantumDefault;
@@ -39,6 +38,8 @@ pthread_mutex_t semaforo_listos = PTHREAD_MUTEX_INITIALIZER;
 
 int iniciarPlanificador(Planificador* planificador) {
 	pthread_t threadRecibir, threadManejar;
+	planificador->sem = malloc(sizeof(sem_t));
+	sem_init(planificador->sem,0,0);
 	log_debug(loggerOrquestador, "Se procede a generar hilo de recepcion de personajes para planificador (%s)", planificador->nombreNivel);
 	pthread_create(&threadRecibir, NULL, (void*) recibirPersonajes, planificador);
 	log_debug(loggerOrquestador, "Se procede a generar hilo de manejo de personajes para planificador (%s)", planificador->nombreNivel);
@@ -76,7 +77,7 @@ int recibirPersonajes(Planificador *planificador) {
 		printf("\n\ntamaño de la cola (%d)!! \n\n",queue_size(planificador->listos));
 		FD_SET(*socketNuevaConexion, planificador->set);
 		pthread_mutex_unlock(&semaforo_listos);
-		sem_post(&sem_test);
+		sem_post(planificador->sem);
 		enviarMensaje(personaje->socket, mensaje); //para confirmarle q inicializo bien;
 		free(socketNuevaConexion);
 		free(mensaje);
@@ -95,7 +96,7 @@ int manejarPersonajes(Planificador *planificador) {
 	while (1) {
 
 		log_debug(log, "Esperando personajes");
-		sem_wait(&sem_test);
+		sem_wait(planificador->sem);
 		Personaje *personaje = queue_peek(planificador->listos);
 		log_debug(log, "Personaje que se movera (%s)", personaje->simbolo);
 
@@ -143,7 +144,7 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
-			sem_post(&sem_test);
+			sem_post(planificador->sem);
 			break;
 		case MUERTE_PERSONAJE:
 			log_debug(log, "El personaje  murio. Lo sacamos del planificador.");
@@ -155,7 +156,7 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
-			sem_post(&sem_test);
+			sem_post(planificador->sem);
 			break;
 		}
 		sleep(tiempoAccion);
