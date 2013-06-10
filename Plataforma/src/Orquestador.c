@@ -196,18 +196,23 @@ void levantarConfiguracion(char* path, int *quantum, int *tiempoAccion) {
 
 void esperarMensajesDeNivel(char* nombreNivel, int socket) {
 	MPS_MSG* mensaje;
-	while (1) {
+	int nivelSigueVivo=1;
+	while (nivelSigueVivo) {
 		mensaje = malloc(sizeof(MPS_MSG));
 		log_debug(loggerOrquestador, "Socket (%d) - Esperando mensajes del (%s)", socket, nombreNivel);
 		recibirMensaje(socket, mensaje);
 		log_info(loggerOrquestador, "Se recibio un mensaje tipo (%d) del (%s)", mensaje->PayloadDescriptor, nombreNivel);
 		switch (mensaje->PayloadDescriptor) {
-
 		case RECURSOS_LIBERADOS:
 			// Aca hacer logica del liberado de recursos.
 			break;
 		case CHEQUEO_INTERBLOQUEO:
 			// Aca hacer la logica del chequeo del interbloqueo.
+			break;
+		default:
+			//si se cierra el nivel llega un msj cualquier entonces cerramos este socket.
+			nivelSigueVivo=0;
+			close(socket);
 			break;
 		}
 		free(mensaje);
