@@ -266,6 +266,7 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 		return 0;
 	}
 	pthread_mutex_lock(&semaforo_listaNiveles);
+	caja->quantity--;
 	restarRecurso(itemsEnNivel, caja->id);
 	log_debug(logger, "Al personaje (%s) se le dio el recurso (%c) del que quedan(%d)", personaje->simbolo, caja->id, caja->quantity);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
@@ -339,6 +340,7 @@ void liberarRecursos(Personaje* personaje,int socketOrquestador) {
 		recursosLiberados.Payload = recurso;
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforo_listaNiveles);
+		caja->quantity++;
 		sumarRecurso(itemsEnNivel, caja->id);
 		nivel_gui_dibujar(itemsEnNivel);
 		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id,caja->quantity);
