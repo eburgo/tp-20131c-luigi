@@ -57,6 +57,7 @@ struct sockaddr_in sAddr;
 ITEM_NIVEL *itemsEnNivel = NULL;
 Posicion* limiteMapa;
 pthread_mutex_t semaforo_listaNiveles = PTHREAD_MUTEX_INITIALIZER;
+int socketOrquestador;
 
 #define IP "127.0.0.1";
 //------ TIPOS DE MENSAJES!!------
@@ -77,7 +78,7 @@ pthread_mutex_t semaforo_listaNiveles = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv) {
 	int *socketEscucha;
-	int socketOrquestador;
+
 	int miPuerto;
 	logger = log_create("/home/utnso/nivel.log", "NIVEL", false, LOG_LEVEL_TRACE);
 	log_info(logger, "Log creado con exito, se procede a loguear el proceso Nivel");
