@@ -207,7 +207,7 @@ void esperarMensajesDeNivel(char* nombreNivel, int socket) {
 			// Aca hacer logica del liberado de recursos.
 			break;
 		case CHEQUEO_INTERBLOQUEO:
-			// Aca hacer la logica del chequeo del interbloqueo.
+			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
 			break;
 		default:
 			//si se cierra el nivel llega un msj cualquier entonces cerramos este socket.

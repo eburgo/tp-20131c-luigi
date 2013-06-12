@@ -14,6 +14,17 @@ typedef struct nivel {
 	int tiempoChequeoDeadLock;
 	int recovery;
 
-} __attribute__((__packed__)) Nivel;
+}__attribute__((__packed__)) Nivel;
+
+typedef struct {
+	char* nombre;
+	t_list *itemsAsignados;
+	char* itemNecesitado;
+}__attribute__((__packed__)) ProcesoPersonaje;
+
+typedef struct {
+	char* nombre;
+	int cantidad;
+}__attribute__((__packed__))RecursoAsignado;
 
 Nivel* levantarConfiguracion(char *rutaArchivo);
