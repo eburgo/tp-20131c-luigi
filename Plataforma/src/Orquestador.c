@@ -12,6 +12,7 @@
 #include <commons/collections/dictionary.h>
 #include <commons/collections/list.h>
 #include <commons/socket.h>
+#include <commons/string.h>
 #include "Orquestador.h"
 #include "Planificador.h"
 #include "inotify.h"
@@ -75,11 +76,18 @@ void manejarConexion(int* socket) {
 		log_info(loggerOrquestador, "Socket (%d) - Se conecto un nivel", *socket);
 		NivelDatos *nivelDatos = NivelDatos_desserializer(mensaje.Payload);
 		log_debug(loggerOrquestador, "Socket (%d) - Se va a registrar el (%s)", *socket, nivelDatos->nombre);
-		registrarNivel(nivelDatos, *socket);
-		log_debug(loggerOrquestador, "Socket (%d) - Iniciando planificador del (%s)", *socket, nivelDatos->nombre);
-		iniciarUnPlanificador(nivelDatos->nombre);
-		log_info(loggerOrquestador, "Socket (%d) - Hilo del planificador del (%s) generado con exito", *socket, nivelDatos->nombre);
-		esperarMensajesDeNivel(nivelDatos->nombre, *socket);
+		if(registrarNivel(nivelDatos, *socket) == 0){
+			log_debug(loggerOrquestador, "Socket (%d) - Iniciando planificador del (%s)", *socket, nivelDatos->nombre);
+			iniciarUnPlanificador(nivelDatos->nombre);
+			log_info(loggerOrquestador, "Socket (%d) - Hilo del planificador del (%s) generado con exito", *socket, nivelDatos->nombre);
+			log_debug(loggerOrquestador, "Socket (%d) - Niveles (%d), Planificadores (%d)", *socket, dictionary_size(niveles), dictionary_size(planificadores));
+			enviarMensaje(*socket,&mensaje);
+			esperarMensajesDeNivel(nivelDatos->nombre, *socket);
+		}
+		else {
+			mensaje.PayloadDescriptor=ERROR_MENSAJE;
+			enviarMsjError(socket,"fallo registro");
+		}
 		break;
 	case PJ_PIDE_NIVEL:
 		log_info(loggerOrquestador, "Socket (%d) - Se conecto un Personaje", *socket);
@@ -125,7 +133,13 @@ void enviarMsjError(int *socket, char* msjError) {
 }
 
 int registrarNivel(NivelDatos *nivelDatos, int socket) {
-	Nivel* nivel = malloc(sizeof(Nivel));
+	Nivel* nivel;
+	nivel=dictionary_get(niveles,nivelDatos->nombre);
+	if(nivel!=NULL){
+		log_info(loggerOrquestador, "Socket (%d) - El nivel (%s), ya existe.", socket, nivel->nombre);
+		return 1;
+	}
+	nivel = malloc(sizeof(Nivel));
 	nivel->ip = nivelDatos->ip;
 	nivel->nombre = nivelDatos->nombre;
 	nivel->puerto = nivelDatos->puerto;
@@ -207,7 +221,23 @@ void esperarMensajesDeNivel(char* nombreNivel, int socket) {
 			// Aca hacer logica del liberado de recursos.
 			break;
 		case CHEQUEO_INTERBLOQUEO:
-			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
+			log_debug(loggerOrquestador, "Se debe resolver el deadlock!");
+			t_stream* stream=malloc(sizeof(t_stream));
+			stream->data = mensaje->Payload;
+			stream->length = mensaje->PayLoadLength;
+			log_debug(loggerOrquestador, "vamos a deserealizar! tamaño de datos (%d)", stream->length);
+			t_list *pjsEnDeadlock= pjsEnDeadlock_desserializer(stream);
+			log_debug(loggerOrquestador, "buscamos pj a matar!");
+			Personaje *pjAMatar =(Personaje*) buscarPjAMatar(nombreNivel,pjsEnDeadlock);
+			log_debug(loggerOrquestador, "enviamos el simbolo del pj a matar!");
+			mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
+			log_debug(loggerOrquestador, "el nombre del pj : (%s)", pjAMatar->simbolo);
+			mensaje->PayLoadLength = strlen(pjAMatar->simbolo)+1;
+			mensaje->Payload=pjAMatar->simbolo;
+			enviarMensaje(socket,mensaje);
+			log_debug(loggerOrquestador, "se envio el msj, buscamos el planificador del (%s) para sacar el pj.",nombreNivel);
+			sacarPersonaje(dictionary_get(planificadores,nombreNivel),pjAMatar);
+			free(stream);
 			break;
 		default:
 			//si se cierra el nivel llega un msj cualquier entonces cerramos este socket.
@@ -217,4 +247,30 @@ void esperarMensajesDeNivel(char* nombreNivel, int socket) {
 		}
 		free(mensaje);
 	}
+}
+
+void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
+	Personaje* pjAMatar;
+	int encontreAQuienMatar=0;
+	//esta funcion es para iterar la lista de personajes del planificador
+	void matarElPrimero(Personaje* pjEnLista){
+		//esta funcion es para iterar la lista de pjsEnDeadlock
+		int esElPersonaje(char *pjNombre){
+				return string_equals_ignore_case(pjEnLista->simbolo, pjNombre);
+		}
+
+		Personaje *personaje;
+		personaje=list_find(pjsEnDeadlock,(void*)esElPersonaje);
+		if(!encontreAQuienMatar && (personaje != NULL)){
+			printf("encontramos a quien matar\n");
+			pjAMatar = pjEnLista;
+			encontreAQuienMatar=1;
+		}
+	}
+
+	Planificador *planificador = dictionary_get(planificadores,nombreNivel);
+	list_iterate(planificador->personajes,(void*)matarElPrimero);
+	printf("dentro del buscarPjAMatar(), el nombre que devolvemos va a ser:\n");
+	printf("%c\n",*pjAMatar->simbolo);
+	return pjAMatar;
 }

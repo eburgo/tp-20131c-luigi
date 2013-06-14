@@ -26,7 +26,7 @@
 int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
 int notificarMovimientoPermitido(Personaje *personaje);
-void sacarPersonaje(Planificador *planificador,Personaje *personaje);
+
 
 //Globales
 extern int quantumDefault;

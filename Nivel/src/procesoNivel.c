@@ -13,14 +13,6 @@
 #include <commons/string.h>
 #include <commons/collections/queue.h>
 
-typedef struct ubicacionP {
-	int x;
-	int y;
-	char* simbolo;
-	t_queue* recursosObtenidos;
-} Personaje;
-
-
 //Funciones
 //Funcion que sirve para iterar los items del nivel e ingresarlos adentro de los items del nivel,
 //al momento de levantar el nivel.
@@ -33,7 +25,7 @@ int conectarConOrquestador(int miPuerto);
 //Funcion principal que se utiliza cuando un personaje se conecta al nivel.
 int comunicarPersonajes();
 // Inicializara al personaje, lo guardara en la lista de items que estan en el nivel.
-int inicializarPersonaje(char* simbolo);
+Personaje* inicializarPersonaje(char* simbolo);
 //Se fija si el recurso esta disponible y le responde por si o por no.
 int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje);
 //Se comunicara con el personaje.
@@ -46,9 +38,9 @@ int realizarMovimiento(Posicion* posicion, Personaje* personaje);
 ITEM_NIVEL* buscarCaja(char* cajaABuscar);
 // da un recurso si el nivel los tiene
 int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje);
-// Libera los recursosy le avisa al orquestador de los recursos liberados.
-void liberarRecursos(Personaje* personaje, int socketOrquestador);
+// le setea al Personaje el recurso que necesita
 void modificarEstadoPj_necesita(Personaje *personaje,char *recurso);
+// le agrega al personaje el recurso que recibio
 void modificarEstadoPj_recibio(Personaje *personaje,char *recurso);
 
 
@@ -84,6 +76,7 @@ t_list *estadoDePersonajes;
 
 // A recibir
 #define MUERTE_PERSONAJE 7
+#define REGISTRO_FAIL 0
 
 int main(int argc, char **argv) {
 	int *socketEscucha;
@@ -147,6 +140,7 @@ int main(int argc, char **argv) {
 
 int conectarConOrquestador(int miPuerto) {
 	MPS_MSG mensajeAEnviar;
+	MPS_MSG mensajeARecibir;
 	int socketOrquestador;
 	NivelDatos* nivelDatos = malloc(sizeof(NivelDatos));
 	nivelDatos->ip = nivel->ip;
@@ -162,6 +156,10 @@ int conectarConOrquestador(int miPuerto) {
 		return EXIT_FAILURE;
 	}
 	enviarMensaje(socketOrquestador, &mensajeAEnviar);
+	recibirMensaje(socketOrquestador, &mensajeARecibir);
+	if(mensajeARecibir.PayloadDescriptor == REGISTRO_FAIL){
+		return EXIT_FAILURE;
+	}
 	free(nivelDatos);
 	return socketOrquestador;
 }
@@ -197,14 +195,11 @@ int interactuarConPersonaje(int* socketConPersonaje,int socketOrquestador) {
 	int terminoElNivel = 0;
 	MPS_MSG mensajeARecibir;
 	MPS_MSG mensajeInicializar;
-	Personaje* personaje = malloc(sizeof(Personaje));
-	personaje->recursosObtenidos = queue_create();
-	personaje->x = 0;
-	personaje->y = 0;
+
 	recibirMensaje(*socketConPersonaje, &mensajeInicializar);
 	log_debug(logger, "Se recibio mensaje de inicializacion.");
-	personaje->simbolo = mensajeInicializar.Payload;
-	inicializarPersonaje(personaje->simbolo);
+
+	Personaje*personaje = inicializarPersonaje(mensajeInicializar.Payload);
 	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ", personaje->simbolo);
 	enviarMensaje(*socketConPersonaje, &mensajeInicializar);
 	while (terminoElNivel == 0) {
@@ -279,11 +274,11 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	restarRecurso(itemsEnNivel, caja->id);
 	log_debug(logger, "Al personaje (%s) se le dio el recurso (%c) del que quedan(%d)", personaje->simbolo, caja->id, caja->quantity);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
-	queue_push(personaje->recursosObtenidos, string_substring_until(&caja->id, 1));
 	mensaje->PayloadDescriptor = HAY_RECURSOS;
 	mensaje->PayLoadLength = sizeof(char);
 	mensaje->Payload = "0";
 	pthread_mutex_lock(&semaforo_estadoPjs);
+	queue_push(personaje->recursosObtenidos, string_substring_until(&caja->id, 1));
 	modificarEstadoPj_recibio(personaje,recurso);
 	pthread_mutex_unlock(&semaforo_estadoPjs);
 	enviarMensaje(*socketPersonaje, mensaje);
@@ -295,8 +290,10 @@ int realizarMovimiento(Posicion* posicion, Personaje* personaje) {
 	pthread_mutex_lock(&semaforo_listaNiveles);
 	MoverPersonaje(itemsEnNivel, *personaje->simbolo, posicion->x, posicion->y);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
+	pthread_mutex_lock(&semaforo_estadoPjs);
 	personaje->x = posicion->x;
 	personaje->y = posicion->y;
+	pthread_mutex_unlock(&semaforo_estadoPjs);
 	log_debug(logger, "El personaje(%s) se movio a X:(%d) Y:(%d)", personaje->simbolo, personaje->x, personaje->y);
 	return 0;
 }
@@ -335,16 +332,19 @@ ITEM_NIVEL* buscarCaja(char* id) {
 	return list_find(nivel->items, (void*) esElRecurso);
 }
 
-int inicializarPersonaje(char* simbolo) {
+Personaje* inicializarPersonaje(char* simbolo) {
 	pthread_mutex_lock(&semaforo_listaNiveles);
 	CrearPersonaje(&itemsEnNivel, *simbolo, 0, 0);
-	ProcesoPersonaje* pj = malloc(sizeof(ProcesoPersonaje));
-	pj->nombre=simbolo;
+	Personaje* pj = malloc(sizeof(Personaje));
+	pj->simbolo=simbolo;
 	pj->itemsAsignados=list_create();
+	pj->recursosObtenidos=queue_create();
 	pj->itemNecesitado = NULL;
+	pj->x = 0;
+	pj->y = 0;
 	list_add(estadoDePersonajes,pj);
 	pthread_mutex_unlock(&semaforo_listaNiveles);
-	return EXIT_SUCCESS;
+	return pj;
 }
 
 void liberarRecursos(Personaje* personaje,int socketOrquestador) {
@@ -354,7 +354,7 @@ void liberarRecursos(Personaje* personaje,int socketOrquestador) {
 		recursosLiberados.PayLoadLength = 2;
 		char* recurso = queue_pop(personaje->recursosObtenidos);
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).",recurso);
-		recursosLiberados.Payload = recurso;
+		memcpy(recursosLiberados.Payload , recurso, strlen(recurso)+1);
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforo_listaNiveles);
 		caja->quantity++;
@@ -376,22 +376,22 @@ void crearCajasInit(ITEM_NIVEL* item) {
 }
 
 void modificarEstadoPj_necesita(Personaje *personaje,char *recurso){
-	bool esElPersonaje(ProcesoPersonaje *pj){
-		return string_equals_ignore_case(pj->nombre, personaje->simbolo);
+	bool esElPersonaje(Personaje *pj){
+		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
 	}
-	ProcesoPersonaje *pj = list_find(estadoDePersonajes,(void*)esElPersonaje);
+	Personaje *pj = list_find(estadoDePersonajes,(void*)esElPersonaje);
 	pj->itemNecesitado=recurso;
 }
 void modificarEstadoPj_recibio(Personaje *personaje,char *recurso){
-	bool esElPersonaje(ProcesoPersonaje *pj){
-		return string_equals_ignore_case(pj->nombre, personaje->simbolo);
+	bool esElPersonaje(Personaje *pj){
+		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
 	}
 	bool esElRecurso(RecursoAsignado *rec){
 			return string_equals_ignore_case(rec->nombre, recurso);
 	}
 	log_debug(logger,"el pj recibio un recurso, actualizamos su estado");
 
-	ProcesoPersonaje *pj = list_find(estadoDePersonajes,(void*)esElPersonaje);
+	Personaje *pj = list_find(estadoDePersonajes,(void*)esElPersonaje);
 	log_debug(logger,"encontramos el pj en la lista de estados");
 	RecursoAsignado *rec=list_find(pj->itemsAsignados,(void*)esElRecurso);
 	if(rec==NULL){

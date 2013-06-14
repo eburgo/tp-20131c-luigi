@@ -4,3 +4,4 @@
 
 //Inicializa un planificador
 int iniciarPlanificador(Planificador* planificador);
+void sacarPersonaje(Planificador *planificador,Personaje *personaje);

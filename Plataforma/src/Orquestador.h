@@ -12,7 +12,7 @@
 //------ TIPOS DE MENSAJES!!------
 #define ERROR_MENSAJE 0
 #define PJ_PIDE_NIVEL 1 	//pj pide ip y puerto del nivel y planificador
-#define REGISTRAR_NIVEL 2	//mensaje de un nivel
+#define REGISTRAR_NIVEL 2	//mensaje recibido de un nivel
 #define PJ_BLOQUEADO 3
 #define RESOLVER_INTERBLOQUEO 4
 #define RECURSOS_LIBERADOS 9
@@ -38,6 +38,8 @@ int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion);
 void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion);
 //Se queda escuchando mensajes del nivel
 void esperarMensajesDeNivel(char* nombreNivel, int socket);
+//busca el primero de la lista de personajes del planificador que corresponde
+void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock);
 
 
 

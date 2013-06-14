@@ -252,7 +252,7 @@ t_stream* NivelDatos_serializer(NivelDatos* self) {
 	return stream;
 }
 
-NivelDatos* NivelDatos_desserializer(char *stream) {
+NivelDatos* NivelDatos_desserializer(char* stream) {
 	NivelDatos* self = malloc(sizeof(NivelDatos));
 	int offset = 0, tmp_size = 0;
 
@@ -270,3 +270,19 @@ NivelDatos* NivelDatos_desserializer(char *stream) {
 	return self;
 }
 
+
+t_list* pjsEnDeadlock_desserializer(t_stream *stream){
+	t_list *lista = list_create();
+	char* personaje;
+	int offset = 0, tmp_size = 0;
+	while (offset < stream->length) {
+		for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';tmp_size++)
+			;
+		personaje = malloc(sizeof(char));
+		memcpy(personaje, stream->data + offset, tmp_size);
+		list_add(lista,personaje);
+		offset+=tmp_size;
+		tmp_size = 0;
+	}
+	return lista;
+}

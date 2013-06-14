@@ -18,7 +18,8 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/unistd.h>
-
+#include "collections/list.h"
+#include "collections/queue.h"
 typedef int socket_t;
 
 typedef unsigned char* buffer_t;
@@ -48,6 +49,7 @@ typedef struct posicion {
 	int y; // Ubicacion S en el eje coordenadas ;)
 } __attribute__((__packed__)) Posicion;
 
+
 typedef struct _MPS_MSG
 {
  int8_t PayloadDescriptor;
@@ -72,6 +74,8 @@ t_stream* nivelConexion_serializer(NivelConexion *self);
 NivelConexion* nivelConexion_desserializer(t_stream *stream);
 t_stream* NivelDatos_serializer(NivelDatos *self);
 NivelDatos* NivelDatos_desserializer(char* stream);
+t_stream* pjsEnDeadlock_serializer(t_list *pjsEnDeadlock);
+t_list* pjsEnDeadlock_desserializer(t_stream *stream);
 
 // Inicia el servidor y devuelve el puerto asignado aleatoreamente.
 int realizarConexion(int* socketEscucha);
