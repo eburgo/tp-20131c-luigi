@@ -6,6 +6,7 @@
 #include <sys/inotify.h>
 #include <string.h>
 #include <commons/config.h>
+#include <commons/log.h>
 #include "Orquestador.h"
 // El tamaño de un evento es igual al tamaño de la estructura de inotify
 // mas el tamaño maximo de nombre de archivo que nosotros soportemos
@@ -21,6 +22,7 @@
 
 extern int quantumDefault;
 extern int tiempoAccion;
+extern t_log* loggerOrquestador;
 char*path = "/home/utnso/git/tp-20131c-luigi/Plataforma";
 int inotify() {
 	char buffer[BUF_LEN];
@@ -60,11 +62,9 @@ int inotify() {
 			// sea un archivo o un directorio
 			if (event->mask & IN_MODIFY) {
 				if (event->mask & IN_ISDIR) {
-					printf("El directorio %s fue modificado.\n", event->name);
 				} else {
-					printf("El archivo %s fue modificado.\n", event->name);
 					levantarConfiguracion("/home/utnso/git/tp-20131c-luigi/Plataforma/Planificador.config",&quantumDefault,&tiempoAccion);
-
+					log_debug(loggerOrquestador, "La configuracion del quantum/tiempoAccion fue modificada.");
 				}
 			}
 		}

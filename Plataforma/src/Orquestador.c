@@ -22,7 +22,6 @@ pthread_mutex_t semaforo_planificadores = PTHREAD_MUTEX_INITIALIZER;
 //Listas compartidas.
 t_dictionary *planificadores;
 t_dictionary *niveles;
-//t_queue *personajesBloqueados;
 t_log* loggerOrquestador;
 int quantumDefault = 2;
 int tiempoAccion = 2;
