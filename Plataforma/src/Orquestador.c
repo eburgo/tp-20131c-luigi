@@ -242,6 +242,7 @@ void esperarMensajesDeNivel(char* nombreNivel, int socket) {
 		default:
 			//si se cierra el nivel llega un msj cualquier entonces cerramos este socket.
 			nivelSigueVivo=0;
+			dictionary_remove(niveles, nombreNivel);
 			close(socket);
 			break;
 		}
