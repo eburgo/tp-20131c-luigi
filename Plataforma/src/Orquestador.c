@@ -209,6 +209,10 @@ void levantarConfiguracion(char* path, int *quantum, int *tiempoAccion) {
 }
 
 void esperarMensajesDeNivel(char* nombreNivel, int socket) {
+
+	//Planificador *planificadorNivel = malloc(sizeof(Planificador));
+	t_list *recLiberados;
+	recLiberados = list_create();
 	MPS_MSG* mensaje;
 	int nivelSigueVivo=1;
 	while (nivelSigueVivo) {
@@ -218,31 +222,32 @@ void esperarMensajesDeNivel(char* nombreNivel, int socket) {
 		log_info(loggerOrquestador, "Se recibio un mensaje tipo (%d) del (%s)", mensaje->PayloadDescriptor, nombreNivel);
 		switch (mensaje->PayloadDescriptor) {
 		case RECURSOS_LIBERADOS:
-			// Aca hacer logica del liberado de recursos.
+			list_add_all(recLiberados, pjsEnDeadlock_desserializer(mensaje->Payload));
+			log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
+			//planificadorNivel = dictionary_get(planificadores,nombreNivel);
+			//while(list_is_empty(recLiberados) && list_is_empty(planificadorNivel->bloqueados) != 0){
+				//MPS_MSG* mensajeDeDesbloqueo;
+				//mensajeDeDesbloqueo = malloc(sizeof(MPS_MSG));
+				//mensajeDeDesbloqueo->PayloadDescriptor =(char)5;
+				//char* unRecurso = list_remove(recLiberados,0);
+				//printf("obtengo un recurso de la lista(%s)/n", unRecurso);
+				//Personaje* personajeADesbloquear = list_find(planificadorNivel->bloqueados, personaje->causaBloqueo == unRecurso);
+				//if(si consegui un personaje haga lo siguiente)
+				//printf("el personaje a desbloquear será: %s /n", personajeADesbloquear->simbolo);
+				//enviarMensaje(personajeADesbloquear->socket,mensajeDeDesbloqueo);
+				//printf("Envio el mensaje: %d al personaje: %s /n", mensajeDeDesbloqueo->PayloadDescriptor,personajeADesbloquear->simbolo);
+				//queue_push(planificadorNivel->listos,personajeADesbloquear);
+				//list_remove_by_condition(planificadorNivel->bloqueados, personaje->simbolo == personajeADesbloquear->simbolo);
+
+			//}
+
 			break;
 		case CHEQUEO_INTERBLOQUEO:
-			log_debug(loggerOrquestador, "Se debe resolver el deadlock!");
-			t_stream* stream=malloc(sizeof(t_stream));
-			stream->data = mensaje->Payload;
-			stream->length = mensaje->PayLoadLength;
-			log_debug(loggerOrquestador, "vamos a deserealizar! tamaño de datos (%d)", stream->length);
-			t_list *pjsEnDeadlock= pjsEnDeadlock_desserializer(stream);
-			log_debug(loggerOrquestador, "buscamos pj a matar!");
-			Personaje *pjAMatar =(Personaje*) buscarPjAMatar(nombreNivel,pjsEnDeadlock);
-			log_debug(loggerOrquestador, "enviamos el simbolo del pj a matar!");
-			mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
-			log_debug(loggerOrquestador, "el nombre del pj : (%s)", pjAMatar->simbolo);
-			mensaje->PayLoadLength = strlen(pjAMatar->simbolo)+1;
-			mensaje->Payload=pjAMatar->simbolo;
-			enviarMensaje(socket,mensaje);
-			log_debug(loggerOrquestador, "se envio el msj, buscamos el planificador del (%s) para sacar el pj.",nombreNivel);
-			sacarPersonaje(dictionary_get(planificadores,nombreNivel),pjAMatar);
-			free(stream);
+			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
 			break;
 		default:
 			//si se cierra el nivel llega un msj cualquier entonces cerramos este socket.
 			nivelSigueVivo=0;
-			dictionary_remove(niveles, nombreNivel);
 			close(socket);
 			break;
 		}

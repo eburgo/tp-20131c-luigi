@@ -76,6 +76,7 @@ t_stream* NivelDatos_serializer(NivelDatos *self);
 NivelDatos* NivelDatos_desserializer(char* stream);
 t_stream* pjsEnDeadlock_serializer(t_list *pjsEnDeadlock);
 t_list* pjsEnDeadlock_desserializer(t_stream *stream);
+t_stream* NivelRecursosLiberados_serializer(t_list *self);
 
 // Inicia el servidor y devuelve el puerto asignado aleatoreamente.
 int realizarConexion(int* socketEscucha);

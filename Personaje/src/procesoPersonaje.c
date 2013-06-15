@@ -13,7 +13,7 @@
 
 // ----------     Funciones      -----------
 // Recorre un nivel, recibe el socket del nivel y el socket del planificador de ese nivel.
-void recorrerNivel(int socketNivel, int socketPlanificador);
+void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestador);
 void manejarSenial(int n);
 //Procesamiento del personaje!
 int procesar();
@@ -48,7 +48,7 @@ int pedirRecurso(char recursoAPedir, int socketNivel);
 // Notifica al planificador del bloqueo
 void avisarDelBloqueo(int socketPlanificador, char* recursoPedido);
 // Espera que el planificador lo desbloquee.
-void esperarDesbloqueo(int socketPlanificador);
+void esperarDesbloqueo(int socketOrquestador);
 // Avisa al nivel que termino el nivel
 void nivelTerminado(int socketNivel);
 // Retorna 1 si el personaje esta en la ubicacion de la caja que necesita.
@@ -56,7 +56,7 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual);
 // Espera la confirmacion.
 void esperarConfirmacion(int socket);
 //encapsula toda la logica de pedir recurso
-int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar,int socketPlanificador);
+int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar,int socketPlanificador, int socketOrquestador);
 //copia los objetos de la cola 1 a la cola 2;
 void copiarCola(t_queue *cola1,t_queue *cola2);
 //Globales
@@ -251,7 +251,7 @@ void nivelTerminado(int socket) {
 	free(mensajeAEnviar);
 }
 
-void recorrerNivel(int socketNivel, int socketPlanificador) {
+void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestador) {
 	Nivel *nivel = queue_peek(personaje->listaNiveles);
 	Posicion* posicion = malloc(sizeof(Posicion));
 	Posicion* posicionActual = malloc(sizeof(Posicion));
@@ -275,7 +275,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 		}
 		if (estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 			esperarConfirmacionDelPlanificador(socketPlanificador);
-			procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador);
+			procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador, socketOrquestador);
 		}
 		while (!estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 
@@ -287,7 +287,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador) {
 			realizarMovimiento(posicionActual, posicion, socketNivel);
 			log_debug(logger, "El personaje:(%s) se movio satisfactoriamente", personaje->nombre);
 			if (estaEnPosicionDeLaCaja(posicion, posicionActual)) {
-				procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador);
+				procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador, socketOrquestador);
 			} else {
 				movimientoRealizado(socketPlanificador);
 			}
@@ -321,11 +321,11 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual) {
 	return (posicionActual->x == posicion->x && posicionActual->y == posicion->y);
 }
 
-void esperarDesbloqueo(int socketPlanificador) {
+void esperarDesbloqueo(int socketOrquestador) {
 	MPS_MSG mensajeARecibir;
 	int bloqueado = 1;
 	while (bloqueado) {
-		recibirMensaje(socketPlanificador, &mensajeARecibir);
+		recibirMensaje(socketOrquestador, &mensajeARecibir);
 		if (mensajeARecibir.PayloadDescriptor == DESBLOQUEAR) {
 			bloqueado = 0;
 		}
@@ -429,7 +429,7 @@ int recorrerNiveles() {
 			return EXIT_FAILURE;
 		}
 
-		recorrerNivel(socketNivel, socketPlanificador);
+		recorrerNivel(socketNivel, socketPlanificador, socketOrquestador);
 	}
 	log_debug(logger, "Se termino el plan de niveles con exito.");
 	return EXIT_SUCCESS;
@@ -484,14 +484,14 @@ int levantarPersonaje(char* path) {
 	return EXIT_SUCCESS;
 }
 
-int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar, int socketPlanificador) {
+int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar, int socketPlanificador, int socketOrquestador) {
 	int recursoAsignado;
 	log_debug(logger, "El personaje: (%s) pedira el recurso (%s) porque llego a la caja correspondiente.", personaje->nombre, cajaABuscar);
 	recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
 	if (!recursoAsignado) {
 		log_debug(logger, "El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible", personaje->nombre, cajaABuscar);
 		avisarDelBloqueo(socketPlanificador, cajaABuscar);
-		esperarDesbloqueo(socketPlanificador);
+		esperarDesbloqueo(socketOrquestador);
 		log_debug(logger, "El personaje (%s) fue desbloqueado, se continua con el nivel.", personaje->nombre);
 	} else {
 		log_debug(logger, "El personaje: (%s) recibio el recurso(%s) con exito!", personaje->nombre, cajaABuscar);

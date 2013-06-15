@@ -348,13 +348,17 @@ Personaje* inicializarPersonaje(char* simbolo) {
 }
 
 void liberarRecursos(Personaje* personaje,int socketOrquestador) {
+	t_list* recursosAasignar;
+	recursosAasignar = list_create();
+	list_add_all(recursosAasignar, personaje->recursosObtenidos->elements);
+	t_stream* stream = NivelRecursosLiberados_serializer(recursosAasignar);
+	MPS_MSG mensajeRecursosLiberados;
+			mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
+			mensajeRecursosLiberados.PayLoadLength = stream->length;
+			mensajeRecursosLiberados.Payload = stream->data;
 	while (!queue_is_empty(personaje->recursosObtenidos)) {
-		MPS_MSG recursosLiberados;
-		recursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
-		recursosLiberados.PayLoadLength = 2;
 		char* recurso = queue_pop(personaje->recursosObtenidos);
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).",recurso);
-		memcpy(recursosLiberados.Payload , recurso, strlen(recurso)+1);
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforo_listaNiveles);
 		caja->quantity++;
@@ -363,10 +367,9 @@ void liberarRecursos(Personaje* personaje,int socketOrquestador) {
 		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id,caja->quantity);
 		free(recurso);
 		pthread_mutex_unlock(&semaforo_listaNiveles);
-		log_debug(logger,"Se le va a informar al Orquestador que el recurso:(%s) se libero.",recursosLiberados.Payload);
-		//recursosLiberados.Payload no esta guardando el char recurso.
-		enviarMensaje(socketOrquestador, &recursosLiberados);
-	}
+		}
+	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
+	log_debug(logger, "Se envian los recursos liberados al orquestador:(%d) ", socketOrquestador);
 	log_debug(logger, "El personaje(%s) fue eliminado del nivel.",personaje->simbolo);
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
 }

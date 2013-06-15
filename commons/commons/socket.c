@@ -271,13 +271,13 @@ NivelDatos* NivelDatos_desserializer(char* stream) {
 }
 
 
+
 t_list* pjsEnDeadlock_desserializer(t_stream *stream){
 	t_list *lista = list_create();
 	char* personaje;
 	int offset = 0, tmp_size = 0;
 	while (offset < stream->length) {
-		for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';tmp_size++)
-			;
+		for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';tmp_size++);
 		personaje = malloc(sizeof(char));
 		memcpy(personaje, stream->data + offset, tmp_size);
 		list_add(lista,personaje);
@@ -286,3 +286,43 @@ t_list* pjsEnDeadlock_desserializer(t_stream *stream){
 	}
 	return lista;
 }
+
+t_stream* NivelRecursosLiberados_serializer(t_list *self) {
+	int i;
+	char *data = malloc(list_size(self) * (sizeof(char) + 1));
+	t_stream *stream = malloc(sizeof(t_stream));
+	int offset = 0, tmp_size = 0;
+	char *objeto;
+	objeto = list_get(self,0);
+	int size = list_size(self);
+		memcpy(data,objeto, tmp_size=sizeof(objeto) + 1);
+		offset = tmp_size;
+		for(i=1;i<size;i++) {
+			char *objeto2;
+			objeto2 = list_get(self,i);
+			memcpy(data + offset,objeto,tmp_size = sizeof(objeto2) + 1);
+			offset += tmp_size;
+		}
+		stream->length = offset;
+		stream->data = data;
+		return stream;
+}
+
+//t_list* NiveRecursosLiberados_desserializer(char *stream) {
+//	t_list *lista= list_create();
+//	int offset = 0, tmp_size = 0;
+//	char* recurso;
+
+//	for (tmp_size = 1; (stream)[tmp_size - 1] != '\0'; tmp_size++);
+//		recurso = malloc(sizeof(char));
+//		memcpy(recurso, stream, tmp_size);
+//		offset = tmp_size;
+//		list_add(lista, recurso);
+//	for (tmp_size = 1;(stream + offset)[tmp_size - 1] != '\0'; tmp_size++);
+//		char* recurso2;
+//		recurso2 = malloc(sizeof(char));
+//		memcpy(recurso2, stream + offset, tmp_size);
+//		offset += tmp_size;
+//		list_add(lista,recurso2);
+//	return lista;
+//	}
