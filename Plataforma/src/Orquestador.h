@@ -40,6 +40,8 @@ void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion);
 void esperarMensajesDeNivel(char* nombreNivel, int socket);
 //busca el primero de la lista de personajes del planificador que corresponde
 void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock);
+//devuelve la ip de un socket
+char * ipDelSocket(int socket);
 
 
 

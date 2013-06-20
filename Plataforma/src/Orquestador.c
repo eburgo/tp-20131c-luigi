@@ -186,9 +186,9 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	fd_set* set = malloc(sizeof(fd_set));
 	FD_ZERO(set);
 	planificador->nombreNivel = nombreNivel;
-	planificador->ip = "127.0.0.1";
 	planificador->puerto = realizarConexion(socketEscucha);
 	planificador->socketEscucha = *socketEscucha;
+	planificador->ip = ipDelSocket(*socketEscucha);
 	planificador->bloqueados = list_create();
 	planificador->personajes = list_create();
 	planificador->listos = queue_create();
@@ -278,4 +278,17 @@ void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
 	printf("dentro del buscarPjAMatar(), el nombre que devolvemos va a ser:\n");
 	printf("%c\n",*pjAMatar->simbolo);
 	return pjAMatar;
+}
+
+char * ipDelSocket(int socket) {
+   struct sockaddr_in adr_inet;/* AF_INET */
+   int len_inet;  /* length */
+
+   //obtenemos la ip que usa el socket
+   len_inet = sizeof adr_inet;
+   if ( getsockname(socket, (struct sockaddr *)&adr_inet,(socklen_t*) &len_inet) == -1 ) {
+      return NULL; //error
+   }
+
+   return inet_ntoa(adr_inet.sin_addr);
 }
