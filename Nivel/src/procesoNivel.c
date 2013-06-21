@@ -115,7 +115,7 @@ int main(int argc, char **argv) {
 		log_error(logger, "Error al conectar al orquestador IpNivel: %s PuertoNivel: %d", nivel->ip, miPuerto);
 		return EXIT_FAILURE;
 	}
-	log_debug(logger, "El nivel %s se conecto al Orquestador:(%d) con exito.", nivel->nombre, socketOrquestador);
+	log_debug(logger, "El nivel %s se conecto al Orquestador con exito.", nivel->nombre);
 
 	pthread_t hiloOrquestador;
 	pthread_t hiloPersonajes;
@@ -188,7 +188,7 @@ int comunicarPersonajes(int *socketEscucha) {
 }
 int interactuarConPersonaje(int* socketConPersonaje) {
 	int terminoElNivel = 0;
-	MPS_MSG mensajeARecibir;
+	MPS_MSG *mensajeARecibir;
 	MPS_MSG mensajeInicializar;
 
 	recibirMensaje(*socketConPersonaje, &mensajeInicializar);
@@ -198,20 +198,21 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ", personaje->simbolo);
 	enviarMensaje(*socketConPersonaje, &mensajeInicializar);
 	while (terminoElNivel == 0) {
+		mensajeARecibir=malloc(sizeof(MPS_MSG));
 		nivel_gui_dibujar(itemsEnNivel);
-		recibirMensaje(*socketConPersonaje, &mensajeARecibir);
+		recibirMensaje(*socketConPersonaje, mensajeARecibir);
 
-		log_debug(logger, "Se recibio un mensaje tipo: %d", mensajeARecibir.PayloadDescriptor);
+		log_debug(logger, "Se recibio un mensaje tipo: %d", mensajeARecibir->PayloadDescriptor);
 
-		switch (mensajeARecibir.PayloadDescriptor) {
+		switch (mensajeARecibir->PayloadDescriptor) {
 		case UBICACION_CAJA:
-			administrarPeticionDeCaja(&mensajeARecibir, socketConPersonaje);
+			administrarPeticionDeCaja(mensajeARecibir, socketConPersonaje);
 			break;
 		case AVISO_MOVIMIENTO:
-			realizarMovimiento(mensajeARecibir.Payload, personaje);
+			realizarMovimiento(mensajeARecibir->Payload, personaje);
 			break;
 		case PEDIR_RECURSO:
-			darRecurso(mensajeARecibir.Payload, personaje, socketConPersonaje);
+			darRecurso(mensajeARecibir->Payload, personaje, socketConPersonaje);
 			break;
 		case MUERTE_PERSONAJE:
 			log_debug(logger, "El personaje ( %s ) murio, se procede a liberar recursos.", personaje->simbolo);
@@ -224,9 +225,11 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 			terminoElNivel = 1;
 			break;
 		default:
-			informarError(socketConPersonaje);
+			log_debug(logger, "El personaje (%s) envio un mensaje no esperado, se cierra la conexion.", personaje->simbolo);
+			terminoElNivel = 1;
 			break;
 		}
+		free(mensajeARecibir);
 	}
 	liberarRecursos(personaje, socketOrquestador);
 	close(*socketConPersonaje);
@@ -335,30 +338,14 @@ Personaje* inicializarPersonaje(char* simbolo) {
 }
 
 void liberarRecursos(Personaje* personaje, int socketOrquestador) {
-	//variables utilizada para comprobar que el serizalidor y desserializador funcionan
-	int i=0;
-	t_list* recLiberados;
-	recLiberados = list_create();
-
 	t_list* recursosAasignar;
 	recursosAasignar = list_create();
 	list_add_all(recursosAasignar, personaje->recursosObtenidos->elements);
-	t_stream* stream = malloc(sizeof(t_stream));
-	stream = NivelRecursosLiberados_serializer(recursosAasignar);
-	log_debug(logger,"Se acaba de serializar la lista de recursosLiberados para enviarla al orquestador");
+	t_stream* stream = NivelRecursosLiberados_serializer(recursosAasignar);
 	MPS_MSG mensajeRecursosLiberados;
 	mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
 	mensajeRecursosLiberados.PayLoadLength = stream->length;
 	mensajeRecursosLiberados.Payload = stream->data;
-
-	//metodos para comprobar el desserializador.
-	list_add_all(recLiberados, pjsEnDeadlock_desserializer(stream));
-	log_debug(logger,"Se acaba de des-serializar la lista de recursosLiberados, de tamanaño:(%d)", list_size(recLiberados));
-	while(i<5){
-		log_debug(logger,"es recurso:(%s) ser deserializo:(%s)",list_get(personaje->recursosObtenidos->elements,i),list_get(recLiberados,i));
-		i++;
-	}
-
 	while (!queue_is_empty(personaje->recursosObtenidos)) {
 		char* recurso = queue_pop(personaje->recursosObtenidos);
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).", recurso);
@@ -372,7 +359,7 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 		pthread_mutex_unlock(&semaforoListaNiveles);
 	}
 	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
-	log_debug(logger, "Se envianla lista de los recursos liberados de tamaño:(%d) al orquestador:(%d) ", list_size(recursosAasignar),socketOrquestador);
+	log_debug(logger, "Se envian los recursos liberados al orquestador:(%d) ", socketOrquestador);
 	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
 }

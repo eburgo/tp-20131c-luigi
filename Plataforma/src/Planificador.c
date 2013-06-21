@@ -23,6 +23,10 @@
 #define OBTUVO_RECURSO 6
 #define MUERTE_PERSONAJE 7
 
+#define TRUE 1
+#define FALSE 0
+
+
 int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
 int notificarMovimientoPermitido(Personaje *personaje);
@@ -86,7 +90,7 @@ int recibirPersonajes(Planificador *planificador) {
 	return 0;
 }
 int manejarPersonajes(Planificador *planificador) {
-	MPS_MSG *mensaje = malloc(sizeof(MPS_MSG));
+	MPS_MSG *mensaje;
 	fd_set readSet;
 	FD_ZERO(&readSet);
 	int i;
@@ -115,7 +119,7 @@ int manejarPersonajes(Planificador *planificador) {
 					printf("\n\n\n UN MENSAJE DE OTRO PERSONAJE!!! \n\n\n");
 				}
 			}
-
+		mensaje = malloc(sizeof(MPS_MSG));
 		recibirMensaje(personaje->socket, mensaje);
 		log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
 		while (personaje->quantum > 1 && mensaje->PayloadDescriptor == MOVIMIENTO_FINALIZADO) {
@@ -124,6 +128,8 @@ int manejarPersonajes(Planificador *planificador) {
 			sleep(tiempoAccion);
 			log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 			notificarMovimientoPermitido(personaje);
+			free(mensaje);
+			mensaje = malloc(sizeof(MPS_MSG));
 			recibirMensaje(personaje->socket, mensaje);
 			log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
 		}
@@ -136,7 +142,7 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case FINALIZADO:
 			log_debug(log, "el personaje (%s) finalizo el nivel", personaje->simbolo);
-			sacarPersonaje(planificador, personaje);
+			sacarPersonaje(planificador, personaje,FALSE);
 			close(personaje->socket);
 			break;
 		case OBTUVO_RECURSO:
@@ -148,17 +154,23 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case MUERTE_PERSONAJE:
 			log_debug(log, "El personaje  murio. Lo sacamos del planificador.");
-			sacarPersonaje(planificador, personaje);
+			sacarPersonaje(planificador, personaje, FALSE);
 			close(personaje->socket);
 			break;
-		default:
+		case MOVIMIENTO_FINALIZADO:
 			log_debug(log, "Al personaje (%s) se le termino el quantum", personaje->simbolo);
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
 			sem_post(planificador->sem);
 			break;
+		default:
+			log_debug(log, "El personaje (%s) envio un mensaje no esperado, se cierra la conexion.", personaje->simbolo);
+			sacarPersonaje(planificador, personaje,TRUE);
+			close(personaje->socket);
+			break;
 		}
+		free(mensaje);
 		sleep(tiempoAccion);
 	}
 	log_destroy(log);
@@ -175,7 +187,7 @@ int notificarMovimientoPermitido(Personaje* personaje) {
 	return 0;
 }
 
-void sacarPersonaje(Planificador *planificador,Personaje *personaje){
+void sacarPersonaje(Planificador *planificador,Personaje *personaje,int porError){
 	int esElPersonaje(Personaje *pj){
 		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
 	}
@@ -186,7 +198,8 @@ void sacarPersonaje(Planificador *planificador,Personaje *personaje){
 	}
 	pj=list_remove_by_condition(planificador->personajes,(void*)esElPersonaje);
 	FD_CLR(pj->socket,planificador->set);
-	notificarMovimientoPermitido(pj);
+	if(!porError)
+		notificarMovimientoPermitido(pj);
 	free(pj);
 	printf("\n\ntamaño de la lista (%d)!! \n\n",list_size(planificador->personajes));
 	printf("\n\ntamaño de la cola (%d)!! \n\n",queue_size(planificador->listos));

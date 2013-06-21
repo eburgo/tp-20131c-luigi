@@ -295,7 +295,7 @@ t_stream* NivelRecursosLiberados_serializer(t_list *recursos) {
 	for(i=0;i<list_size(recursos);i++) {
 			char *objeto;
 			objeto = list_get(recursos,i);
-			memcpy(data, objeto, tmp_size = strlen(objeto) + 1);
+			memcpy(data+offset, objeto, tmp_size = strlen(objeto) + 1);
 			offset += tmp_size;
 		}
 		stream->length = offset;

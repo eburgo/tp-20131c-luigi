@@ -167,7 +167,7 @@ t_stream* pjsEnDeadlock_serializer(t_list *pjsEnDeadlock) {
 		Personaje *pj;
 		pj = list_get(pjsEnDeadlock, i);
 		log_debug(logger, "Serializando.... simbolo de pj : %s \n", pj->simbolo);
-		memcpy(data, pj->simbolo, tmp_size = strlen(pj->simbolo) + 1);
+		memcpy(data+offset, pj->simbolo, tmp_size = strlen(pj->simbolo) + 1);
 		offset += tmp_size;
 	}
 	stream->data = data;
