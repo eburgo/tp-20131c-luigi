@@ -5,3 +5,4 @@
 //Inicializa un planificador
 int iniciarPlanificador(Planificador* planificador);
 void sacarPersonaje(Planificador *planificador,Personaje *personaje,int porError);
+int buscarSimboloPersonaje(t_list *self, char* nombrePersonaje);

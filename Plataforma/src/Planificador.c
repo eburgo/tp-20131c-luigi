@@ -40,6 +40,8 @@ extern t_log* loggerOrquestador;
 sem_t sem_test;
 pthread_mutex_t semaforo_listos = PTHREAD_MUTEX_INITIALIZER;
 
+extern t_list *personajes;
+
 int iniciarPlanificador(Planificador* planificador) {
 	pthread_t threadRecibir, threadManejar;
 	planificador->sem = malloc(sizeof(sem_t));
@@ -68,6 +70,13 @@ int recibirPersonajes(Planificador *planificador) {
 		mensaje = malloc(sizeof(MPS_MSG));
 		recibirMensaje(*socketNuevaConexion, mensaje);
 		log_debug(log, "El personaje (%s) entro al nivel", (char*) mensaje->Payload);
+
+        // Agrega los personajes que estan ejecutandose
+		if ((buscarSimboloPersonaje(personajes, mensaje->Payload)) == -1){
+		list_add(personajes,mensaje->Payload);
+		}
+		// ............................................
+
 		Personaje *personaje = malloc(sizeof(Personaje));
 		personaje->simbolo = (char*) mensaje->Payload;
 		personaje->quantum = quantumDefault;
@@ -203,4 +212,25 @@ void sacarPersonaje(Planificador *planificador,Personaje *personaje,int porError
 	free(pj);
 	printf("\n\ntamaño de la lista (%d)!! \n\n",list_size(planificador->personajes));
 	printf("\n\ntamaño de la cola (%d)!! \n\n",queue_size(planificador->listos));
+}
+int buscarSimboloPersonaje(t_list *self, char* nombrePersonaje) {
+	t_link_element *aux = self->head;
+	if(aux == NULL)
+		return -1;
+
+	char* nombre = (char*) aux->data;
+	int index = 0;
+
+	while ((aux != NULL) && (!(string_equals_ignore_case(nombre, nombrePersonaje)))){
+		aux = aux->next;
+		if (aux != NULL){
+			nombre = (char*) aux->data;
+		}
+		index++;
+	}
+
+	if(string_equals_ignore_case(nombre, nombrePersonaje))
+		return index;
+	else
+		return -1;
 }

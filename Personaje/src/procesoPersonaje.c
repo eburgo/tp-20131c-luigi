@@ -59,6 +59,8 @@ void esperarConfirmacion(int socket);
 int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar,int socketPlanificador, int socketOrquestador);
 //copia los objetos de la cola 1 a la cola 2;
 void copiarCola(t_queue *cola1,t_queue *cola2);
+//le avisa al orquestador que el personaje termino con su plan de niveles
+void avisarFinalizacionDelPersonaje();
 //Globales
 Personaje* personaje;
 t_log* logger;
@@ -80,6 +82,7 @@ int socketNivel;
 #define CON_RECURSOS 7
 #define OBTUVO_RECURSO 6 // descriptor que envia al planificador si obtuvo un recurso
 #define CAJAFUERALIMITE 8 // mensaje q recibe en la consulta de la ubicacion de una caja si la misma esta fuera del limite
+#define FINALIZO_NIVELES 20 // Notifica que el personaje termino el plan de niveles
 int main(int argc, char *argv[]) {
 
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
@@ -463,8 +466,8 @@ void finalizar() {
 	close(socketNivel);
 	close(socketPlanificador);
 	log_debug(logger, "El personaje %s finalizo sus niveles de forma correcta.", personaje->nombre);
+	avisarFinalizacionDelPersonaje(); // le avisa al orquestador que termino el plan de niveles
 	log_destroy(logger);
-
 }
 
 int avisarFinalizacion(int socketNivel, int socketPlanificador) {
@@ -505,4 +508,17 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_q
 		}
 	}
 	return 0;
+}
+
+void avisarFinalizacionDelPersonaje() {
+	int socketOrquestador = conectarAlOrquestador();
+	if (socketOrquestador == 1) {
+		return;
+	}
+	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+	mensajeAEnviar->PayloadDescriptor = FINALIZO_NIVELES;
+	mensajeAEnviar->PayLoadLength = sizeof(char);
+	mensajeAEnviar->Payload = personaje->simbolo;
+	enviarMensaje(socketOrquestador, mensajeAEnviar);
+	free(mensajeAEnviar);
 }

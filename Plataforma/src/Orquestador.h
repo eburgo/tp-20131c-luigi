@@ -18,6 +18,7 @@
 #define RECURSOS_LIBERADOS 9
 #define CHEQUEO_INTERBLOQUEO 8
 #define RECURSOS_ASIGNADOS 10
+#define FINALIZO_NIVELES 20 // Notifica que el personaje termino el plan de niveles
 //#define MSJ_XX 5
 //#define MSJ_XX 6
 //#define MSJ_XX 7
@@ -43,7 +44,8 @@ void esperarMensajesDeNivel(char* nombreNivel, int socket);
 void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock);
 //devuelve la ip de un socket
 char * ipDelSocket(int socket);
-
+//llama al binario koopa
+void llamarKoopa();
 
 
 

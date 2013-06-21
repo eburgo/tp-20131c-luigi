@@ -23,6 +23,7 @@ pthread_mutex_t semaforo_planificadores = PTHREAD_MUTEX_INITIALIZER;
 t_dictionary *planificadores;
 t_dictionary *niveles;
 t_log* loggerOrquestador;
+t_list* personajes;
 int quantumDefault = 2;
 int tiempoAccion = 2;
 
@@ -37,6 +38,7 @@ int iniciarOrquestador() {
 	//t_queue *colaHilos = queue_create();
 	niveles = dictionary_create();
 	planificadores = dictionary_create();
+	personajes = list_create();
 	loggerOrquestador = log_create("/home/utnso/orquestador.log", "ORQUESTADOR", true, LOG_LEVEL_TRACE);
 
 	log_debug(loggerOrquestador, "Iniciando servidor...");
@@ -66,6 +68,7 @@ int iniciarOrquestador() {
 
 void manejarConexion(int* socket) {
 	MPS_MSG mensaje;
+	int indice;
 	log_debug(loggerOrquestador, "Socket (%d) - Esperando mensaje inicializador ( Personaje o Nivel )", *socket);
 	recibirMensaje(*socket, &mensaje);
 	log_info(loggerOrquestador, "Se recibio un mensaje tipo (%d)", mensaje.PayloadDescriptor);
@@ -114,6 +117,13 @@ void manejarConexion(int* socket) {
 		enviarMensaje(*socket, &mensaje);
 		log_error(loggerOrquestador, "Socket (%d) - Info enviada con exito", *socket);
 		free(nivel);
+		break;
+	case FINALIZO_NIVELES:
+		indice = buscarSimboloPersonaje(personajes, mensaje.Payload);
+		list_remove_and_destroy_element(personajes, indice, free);
+		if (list_size(personajes) == 0) {
+		llamarKoopa();
+		}
 		break;
 	default:
 		log_error(loggerOrquestador, "Tipo de mensaje desconocido.");
@@ -330,3 +340,9 @@ char * ipDelSocket(int socket) {
 
    return inet_ntoa(adr_inet.sin_addr);
 }
+
+void llamarKoopa() {
+	char *prog[] = { "koopa","/home/utnso/Escritorio/koopa/koopa.txt", NULL };
+	execv("/home/utnso/Escritorio/koopa/koopa",prog);
+}
+
