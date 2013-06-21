@@ -186,9 +186,9 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	fd_set* set = malloc(sizeof(fd_set));
 	FD_ZERO(set);
 	planificador->nombreNivel = nombreNivel;
-	planificador->ip = "127.0.0.1";
 	planificador->puerto = realizarConexion(socketEscucha);
 	planificador->socketEscucha = *socketEscucha;
+	planificador->ip = ipDelSocket(*socketEscucha);
 	planificador->bloqueados = list_create();
 	planificador->personajes = list_create();
 	planificador->listos = queue_create();
@@ -207,39 +207,58 @@ void levantarConfiguracion(char* path, int *quantum, int *tiempoAccion) {
 	config_destroy(config);
 }
 
-void esperarMensajesDeNivel(char* nombreNivel, int socket) {
-
-	//Planificador *planificadorNivel = malloc(sizeof(Planificador));
-	t_list *recLiberados;
-	recLiberados = list_create();
+void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 	MPS_MSG* mensaje;
 	int nivelSigueVivo=1;
 	while (nivelSigueVivo) {
+		t_list* recLiberados;
+		t_list* recAsignados;
+		recLiberados = list_create();
+		recAsignados = list_create();
+		Planificador *planificadorNivel = malloc(sizeof(Planificador));
+		MPS_MSG* mensajeRecursosAsignados;
+		mensajeRecursosAsignados=malloc(sizeof(MPS_MSG));
 		mensaje = malloc(sizeof(MPS_MSG));
+		t_stream* streamA=malloc(sizeof(t_stream));
 		log_debug(loggerOrquestador, "Socket (%d) - Esperando mensajes del (%s)", socket, nombreNivel);
 		recibirMensaje(socket, mensaje);
 		log_info(loggerOrquestador, "Se recibio un mensaje tipo (%d) del (%s)", mensaje->PayloadDescriptor, nombreNivel);
 		switch (mensaje->PayloadDescriptor) {
 		case RECURSOS_LIBERADOS:
-			list_add_all(recLiberados, pjsEnDeadlock_desserializer(mensaje->Payload));
+
+			streamA->length=mensaje->PayLoadLength;
+			streamA->data=mensaje->Payload;
+			list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
+			log_debug(loggerOrquestador,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recLiberados));
 			log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
-			//planificadorNivel = dictionary_get(planificadores,nombreNivel);
-			//while(list_is_empty(recLiberados) && list_is_empty(planificadorNivel->bloqueados) != 0){
-				//MPS_MSG* mensajeDeDesbloqueo;
-				//mensajeDeDesbloqueo = malloc(sizeof(MPS_MSG));
-				//mensajeDeDesbloqueo->PayloadDescriptor =(char)5;
-				//char* unRecurso = list_remove(recLiberados,0);
-				//printf("obtengo un recurso de la lista(%s)/n", unRecurso);
-				//Personaje* personajeADesbloquear = list_find(planificadorNivel->bloqueados, personaje->causaBloqueo == unRecurso);
-				//if(si consegui un personaje haga lo siguiente)
-				//printf("el personaje a desbloquear será: %s /n", personajeADesbloquear->simbolo);
-				//enviarMensaje(personajeADesbloquear->socket,mensajeDeDesbloqueo);
-				//printf("Envio el mensaje: %d al personaje: %s /n", mensajeDeDesbloqueo->PayloadDescriptor,personajeADesbloquear->simbolo);
-				//queue_push(planificadorNivel->listos,personajeADesbloquear);
-				//list_remove_by_condition(planificadorNivel->bloqueados, personaje->simbolo == personajeADesbloquear->simbolo);
+			planificadorNivel = (Planificador*) dictionary_get(planificadores,nombreNivel);
+			while(list_is_empty(recLiberados) && list_is_empty(planificadorNivel->bloqueados) != 0){
+				Personaje* personajeADesbloquear;
+				int posicionPersonaje;
+				MPS_MSG* mensajeDeDesbloqueo;
+				mensajeDeDesbloqueo = malloc(sizeof(MPS_MSG));
+				mensajeDeDesbloqueo->PayloadDescriptor =(char)5;
+				char* unRecurso = list_remove(recLiberados,0);
+				log_debug(loggerOrquestador,"obtengo el recurso:(%s) de la lista.", unRecurso);
+				posicionPersonaje = list_find_personaje(planificadorNivel->bloqueados,unRecurso);
+				personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje);
 
-			//}
-
+					if(posicionPersonaje!= 0){
+						log_debug(loggerOrquestador,"El personaje al que se le dará el recurso, para su desbloqueo, es: (%s)", personajeADesbloquear->simbolo);
+						enviarMensaje(personajeADesbloquear->socket,mensajeDeDesbloqueo);
+						list_add(recAsignados,unRecurso);
+						queue_push(planificadorNivel->listos,personajeADesbloquear);
+						list_remove(planificadorNivel->bloqueados,posicionPersonaje-1);
+					}
+			}
+			t_stream* stream = malloc(sizeof(t_stream));
+			stream = NivelRecursosLiberados_serializer(recAsignados);
+			log_debug(loggerOrquestador,"Se acaba de serializar la lista de recursosAsignados para enviarla al procesoNivel");
+			mensajeRecursosAsignados->PayloadDescriptor= 10;
+			mensajeRecursosAsignados->PayLoadLength = stream->length;
+			mensajeRecursosAsignados->Payload= stream->data;
+			log_debug(loggerOrquestador,"Se envian los recursos asignados al Nivel: (%S)", nombreNivel);
+			enviarMensaje(socket,mensajeRecursosAsignados);
 			break;
 		case CHEQUEO_INTERBLOQUEO:
 			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
@@ -252,7 +271,26 @@ void esperarMensajesDeNivel(char* nombreNivel, int socket) {
 		}
 		free(mensaje);
 	}
-}
+ }
+
+
+int list_find_personaje(t_list* personajesBloqueados,char* unRecurso){
+	Personaje* personaje;
+	int posicion = 0;
+	int encontre = 0;
+		while (list_is_empty(personajesBloqueados)==encontre){
+			personaje = list_get(personajesBloqueados, posicion);
+			if (personaje->causaBloqueo == unRecurso) {
+				encontre=1;
+				}
+			else posicion++;
+		}
+
+		if (encontre==0) {
+			return 0;
+			}
+		else return posicion+1;
+	}
 
 void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
 	Personaje* pjAMatar;
@@ -278,4 +316,17 @@ void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
 	printf("dentro del buscarPjAMatar(), el nombre que devolvemos va a ser:\n");
 	printf("%c\n",*pjAMatar->simbolo);
 	return pjAMatar;
+}
+
+char * ipDelSocket(int socket) {
+   struct sockaddr_in adr_inet;/* AF_INET */
+   int len_inet;  /* length */
+
+   //obtenemos la ip que usa el socket
+   len_inet = sizeof adr_inet;
+   if ( getsockname(socket, (struct sockaddr *)&adr_inet,(socklen_t*) &len_inet) == -1 ) {
+      return NULL; //error
+   }
+
+   return inet_ntoa(adr_inet.sin_addr);
 }

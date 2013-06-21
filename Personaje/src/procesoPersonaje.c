@@ -324,6 +324,7 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual) {
 void esperarDesbloqueo(int socketOrquestador) {
 	MPS_MSG mensajeARecibir;
 	int bloqueado = 1;
+	log_debug(logger, "El personaje está a la espera de ser desbloqueado");
 	while (bloqueado) {
 		recibirMensaje(socketOrquestador, &mensajeARecibir);
 		if (mensajeARecibir.PayloadDescriptor == DESBLOQUEAR) {

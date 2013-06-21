@@ -17,6 +17,7 @@
 #define RESOLVER_INTERBLOQUEO 4
 #define RECURSOS_LIBERADOS 9
 #define CHEQUEO_INTERBLOQUEO 8
+#define RECURSOS_ASIGNADOS 10
 //#define MSJ_XX 5
 //#define MSJ_XX 6
 //#define MSJ_XX 7
@@ -40,6 +41,8 @@ void levantarConfiguracion(char* path,int *quantum,int *tiempoAccion);
 void esperarMensajesDeNivel(char* nombreNivel, int socket);
 //busca el primero de la lista de personajes del planificador que corresponde
 void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock);
+//devuelve la ip de un socket
+char * ipDelSocket(int socket);
 
 
 
