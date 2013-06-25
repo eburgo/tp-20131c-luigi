@@ -42,6 +42,8 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje);
 void actualizarRecursosNecesitadosAlPersonaje(Personaje *personaje, char *recurso);
 // le agrega al personaje el recurso que recibio
 void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso);
+//Actualiza la caja de recursos segun los recursos que fueron re-asignados
+void actualizarRecursos (t_list* recAsignados);
 
 //Globales
 Nivel* nivel;
@@ -68,6 +70,8 @@ t_list *estadoDePersonajes;
 #define HAY_RECURSOS 7
 #define CAJAFUERALIMITE 8
 #define RECURSOS_LIBERADOS 9
+#define RECURSOS_ASIGNADOS 10
+#define RECURSOS_NO_ASIGNADOS 11
 
 // A recibir
 #define MUERTE_PERSONAJE 7
@@ -338,6 +342,7 @@ Personaje* inicializarPersonaje(char* simbolo) {
 }
 
 void liberarRecursos(Personaje* personaje, int socketOrquestador) {
+	MPS_MSG mensajeARecibir;
 	t_list* recursosAasignar;
 	recursosAasignar = list_create();
 	list_add_all(recursosAasignar, personaje->recursosObtenidos->elements);
@@ -346,8 +351,32 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
 	mensajeRecursosLiberados.PayLoadLength = stream->length;
 	mensajeRecursosLiberados.Payload = stream->data;
-	while (!queue_is_empty(personaje->recursosObtenidos)) {
-		char* recurso = queue_pop(personaje->recursosObtenidos);
+	log_debug(logger, "Se enviaran los recursos liberados al orquestador:(%d) para que se asignen a otros personajes ", socketOrquestador);
+	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
+	recibirMensaje(socketOrquestador, &mensajeARecibir);
+
+	if (mensajeARecibir.PayloadDescriptor == RECURSOS_ASIGNADOS) {
+		log_debug(logger, "El nivel recibio la lista de recursos re-asignados para su actulizar los recursos");
+		t_stream* streamA=malloc(sizeof(t_stream));
+		t_list* recAsignados;
+		recAsignados = list_create();
+			streamA->length = mensajeARecibir.PayLoadLength;
+			streamA->data = mensajeARecibir.Payload;
+			list_add_all(recAsignados, pjsEnDeadlock_desserializer(streamA));
+			log_debug(logger,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recAsignados));
+			//La actualizacion la debo hacer de los recursos que no asigne...
+			actualizarRecursos (recAsignados);
+
+	} else {
+		//Ninguno de los recurso se re-asignaron. Por lo tanto libero a todos los usados.
+		actualizarRecursos (recursosAasignar);
+	}
+	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
+	BorrarItem(&itemsEnNivel, *personaje->simbolo);
+}
+void actualizarRecursos (t_list* recAsignados){
+	while (!list_is_empty(recAsignados)) {
+		char* recurso = list_remove(recAsignados,0);
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).", recurso);
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforoListaNiveles);
@@ -357,12 +386,9 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id, caja->quantity);
 		free(recurso);
 		pthread_mutex_unlock(&semaforoListaNiveles);
+		}
 	}
-	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
-	log_debug(logger, "Se envian los recursos liberados al orquestador:(%d) ", socketOrquestador);
-	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
-	BorrarItem(&itemsEnNivel, *personaje->simbolo);
-}
+
 
 void crearCajasInit(ITEM_NIVEL* item) {
 	CrearCaja(&itemsEnNivel, item->id, item->posx, item->posy, item->quantity);

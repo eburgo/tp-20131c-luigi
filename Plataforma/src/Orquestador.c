@@ -26,7 +26,10 @@ t_log* loggerOrquestador;
 t_list* personajes;
 int quantumDefault = 2;
 int tiempoAccion = 2;
-
+//Tipos de mensajes a enviar
+#define DESBLOQUEAR 5
+#define RECURSOS_ASIGNADOS 10
+#define RECURSOS_NO_ASIGNADOS 11
 // PROTOTIPOS
 void armarNivelConexion(NivelConexion *nivelConexion, Nivel *nivel, Planificador *planificador);
 
@@ -242,31 +245,44 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			log_debug(loggerOrquestador,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recLiberados));
 			log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
 			planificadorNivel = (Planificador*) dictionary_get(planificadores,nombreNivel);
-			while(list_is_empty(recLiberados) && list_is_empty(planificadorNivel->bloqueados) != 0){
+			while(!(list_is_empty(recLiberados) || list_is_empty(planificadorNivel->bloqueados))){
 				Personaje* personajeADesbloquear;
 				int posicionPersonaje;
-				MPS_MSG* mensajeDeDesbloqueo;
-				mensajeDeDesbloqueo = malloc(sizeof(MPS_MSG));
-				mensajeDeDesbloqueo->PayloadDescriptor =(char)5;
 				char* unRecurso = list_remove(recLiberados,0);
 				log_debug(loggerOrquestador,"obtengo el recurso:(%s) de la lista.", unRecurso);
 				posicionPersonaje = list_find_personaje(planificadorNivel->bloqueados,unRecurso);
-				personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje);
-
-					if(posicionPersonaje!= 0){
-						log_debug(loggerOrquestador,"El personaje al que se le dará el recurso, para su desbloqueo, es: (%s)", personajeADesbloquear->simbolo);
-						enviarMensaje(personajeADesbloquear->socket,mensajeDeDesbloqueo);
+				log_debug(loggerOrquestador,"la posicion del personaje a desbloquear es:(%d) en una lista de tamaño (%d)", posicionPersonaje, list_size(planificadorNivel->bloqueados));
+					if(posicionPersonaje != 0){
+						MPS_MSG mensajeDeDesbloqueo;
+						mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
+						mensajeDeDesbloqueo.PayLoadLength = sizeof(char);
+						mensajeDeDesbloqueo.Payload = "0"; //no tiene importancia este campo
+						personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje-1);
+						log_debug(loggerOrquestador,"Notifico al personaje: (%s) de su desbloqueo", personajeADesbloquear->simbolo);
+						enviarMensaje(personajeADesbloquear->socket,&mensajeDeDesbloqueo);
 						list_add(recAsignados,unRecurso);
+						log_debug(loggerOrquestador,"Paso al personaje: (%s) de la listaBloqueados a la listaListos",personajeADesbloquear->simbolo);
 						queue_push(planificadorNivel->listos,personajeADesbloquear);
 						list_remove(planificadorNivel->bloqueados,posicionPersonaje-1);
-					}
+					} else {
+						log_debug(loggerOrquestador,"No se asigno ningun recurso.");
+						}
 			}
-			t_stream* stream = malloc(sizeof(t_stream));
-			stream = NivelRecursosLiberados_serializer(recAsignados);
-			log_debug(loggerOrquestador,"Se acaba de serializar la lista de recursosAsignados para enviarla al procesoNivel");
-			mensajeRecursosAsignados->PayloadDescriptor= 10;
-			mensajeRecursosAsignados->PayLoadLength = stream->length;
-			mensajeRecursosAsignados->Payload= stream->data;
+
+			if(list_is_empty(recAsignados)==0){
+				t_stream* stream = malloc(sizeof(t_stream));
+				stream = NivelRecursosLiberados_serializer(recAsignados);
+				log_debug(loggerOrquestador,"Se acaba de serializar la lista de recursosAsignados para enviarla al procesoNivel");
+				mensajeRecursosAsignados->PayloadDescriptor= RECURSOS_ASIGNADOS;
+				mensajeRecursosAsignados->PayLoadLength = stream->length;
+				mensajeRecursosAsignados->Payload= stream->data;
+			} else {
+				//Ningun recurso se re-asigno.
+				mensajeRecursosAsignados->PayloadDescriptor= RECURSOS_NO_ASIGNADOS;
+				mensajeRecursosAsignados->PayLoadLength = sizeof(char);
+				mensajeRecursosAsignados->Payload= "p";//no importa su valor
+			}
+
 			log_debug(loggerOrquestador,"Se envian los recursos asignados al Nivel: (%S)", nombreNivel);
 			enviarMensaje(socket,mensajeRecursosAsignados);
 			break;
@@ -285,22 +301,24 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 
 
 int list_find_personaje(t_list* personajesBloqueados,char* unRecurso){
-	Personaje* personaje;
-	int posicion = 0;
-	int encontre = 0;
-		while (list_is_empty(personajesBloqueados)==encontre){
-			personaje = list_get(personajesBloqueados, posicion);
-			if (personaje->causaBloqueo == unRecurso) {
-				encontre=1;
-				}
-			else posicion++;
-		}
+	//Personaje* personaje;
+	//int posicion = 0;
+	//int encontre = 0;
+	//	while (!(list_is_empty(personajesBloqueados) || encontre)){
+	//		personaje = list_get(personajesBloqueados, posicion);
+	//		if (personaje->causaBloqueo == unRecurso) {
+	//			encontre=1;
+	//			}
+	//		else posicion++;
+	//	}
 
-		if (encontre==0) {
-			return 0;
-			}
-		else return posicion+1;
-	}
+	//	if (encontre==0) {
+	//		return 0;
+	//		}
+	//	else {
+	//		return posicion+1;
+	//	}
+	return 1;}
 
 void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
 	Personaje* pjAMatar;
