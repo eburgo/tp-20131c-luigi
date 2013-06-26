@@ -246,7 +246,9 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 		list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
 		log_debug(loggerOrquestador,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recLiberados));
 		log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
+		pthread_mutex_lock(&semaforo_niveles);
 		planificadorNivel = (Planificador*) dictionary_get(planificadores,nombreNivel);
+		pthread_mutex_unlock(&semaforo_niveles);
 			while(!(list_is_empty(recLiberados) || list_is_empty(planificadorNivel->bloqueados))){
 				Personaje* personajeADesbloquear;
 				int posicionPersonaje;
@@ -282,7 +284,7 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 		mensajeRecursosAsignados->PayloadDescriptor= RECURSOS_NO_ASIGNADOS;
 		mensajeRecursosAsignados->PayLoadLength = stream->length;
 		mensajeRecursosAsignados->Payload= stream->data;
-		log_debug(loggerOrquestador,"Se envian los recursos NO asignados al Nivel: (%S)", nombreNivel);
+		log_debug(loggerOrquestador,"Se envian los recursosNOasignados al Nivel:(%S)", nombreNivel);
 		enviarMensaje(socket,mensajeRecursosAsignados);
 		break;
 		case CHEQUEO_INTERBLOQUEO:
@@ -300,24 +302,17 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 
 
 int list_find_personaje(t_list* personajesBloqueados,char* unRecurso){
-	//Personaje* personaje;
-	//int posicion = 0;
-	//int encontre = 0;
-	//	while (!(list_is_empty(personajesBloqueados) || encontre)){
-	//		personaje = list_get(personajesBloqueados, posicion);
-	//		if (personaje->causaBloqueo == unRecurso) {
-	//			encontre=1;
-	//			}
-	//		else posicion++;
-	//	}
-
-	//	if (encontre==0) {
-	//		return 0;
-	//		}
-	//	else {
-	//		return posicion+1;
-	//	}
-	return 1;}
+	Personaje* personaje;
+	int posicion;
+	int encontre = 0;
+	for (posicion=0 ; posicion<list_size(personajesBloqueados) && !encontre; posicion++){
+		personaje = list_get(personajesBloqueados,posicion);
+			if (personaje->causaBloqueo == unRecurso) {
+				encontre=1;
+				}
+	}
+	return posicion;
+}
 
 void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
 	Personaje* pjAMatar;

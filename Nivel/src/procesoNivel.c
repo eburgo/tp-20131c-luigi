@@ -235,7 +235,7 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 		}
 		free(mensajeARecibir);
 	}
-	liberarRecursos(personaje, socketOrquestador);
+
 	close(*socketConPersonaje);
 	free(personaje);
 	return 0;
@@ -351,8 +351,9 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
 	mensajeRecursosLiberados.PayLoadLength = stream->length;
 	mensajeRecursosLiberados.Payload = stream->data;
-	log_debug(logger, "Se enviaran los recursos obtenidos al orquestador:(%d) para que se asignen a otros personajes ", socketOrquestador);
+	log_debug(logger, "Se enviaran los recursos, obtenidos por :(%s), al orquestador:(%d) para que se asignen a otros personajes ", personaje->simbolo ,socketOrquestador);
 	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
+	list_clean(personaje->recursosObtenidos->elements);
 	recibirMensaje(socketOrquestador, &mensajeARecibir);
 	if( mensajeARecibir.PayloadDescriptor == RECURSOS_NO_ASIGNADOS ){
 		log_debug(logger, "El nivel recibio la lista de recursos No asignados para su actulizar los recursos");
