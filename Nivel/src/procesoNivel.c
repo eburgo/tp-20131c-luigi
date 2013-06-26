@@ -351,29 +351,26 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
 	mensajeRecursosLiberados.PayLoadLength = stream->length;
 	mensajeRecursosLiberados.Payload = stream->data;
-	log_debug(logger, "Se enviaran los recursos liberados al orquestador:(%d) para que se asignen a otros personajes ", socketOrquestador);
+	log_debug(logger, "Se enviaran los recursos obtenidos al orquestador:(%d) para que se asignen a otros personajes ", socketOrquestador);
 	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
 	recibirMensaje(socketOrquestador, &mensajeARecibir);
-
-	if (mensajeARecibir.PayloadDescriptor == RECURSOS_ASIGNADOS) {
-		log_debug(logger, "El nivel recibio la lista de recursos re-asignados para su actulizar los recursos");
+	if( mensajeARecibir.PayloadDescriptor == RECURSOS_NO_ASIGNADOS ){
+		log_debug(logger, "El nivel recibio la lista de recursos No asignados para su actulizar los recursos");
 		t_stream* streamA=malloc(sizeof(t_stream));
-		t_list* recAsignados;
-		recAsignados = list_create();
+		t_list* recNoAsignados;
+		recNoAsignados = list_create();
 			streamA->length = mensajeARecibir.PayLoadLength;
 			streamA->data = mensajeARecibir.Payload;
-			list_add_all(recAsignados, pjsEnDeadlock_desserializer(streamA));
-			log_debug(logger,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recAsignados));
-			//La actualizacion la debo hacer de los recursos que no asigne...
-			actualizarRecursos (recAsignados);
-
+			list_add_all(recNoAsignados, pjsEnDeadlock_desserializer(streamA));
+			log_debug(logger,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recNoAsignados));
+			actualizarRecursos (recNoAsignados);
 	} else {
-		//Ninguno de los recurso se re-asignaron. Por lo tanto libero a todos los usados.
-		actualizarRecursos (recursosAasignar);
+		log_debug(logger,"Se recibio un mensaje equivocado");
 	}
 	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
 }
+
 void actualizarRecursos (t_list* recAsignados){
 	while (!list_is_empty(recAsignados)) {
 		char* recurso = list_remove(recAsignados,0);

@@ -226,6 +226,8 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 	while (nivelSigueVivo) {
 		t_list* recLiberados;
 		t_list* recAsignados;
+		t_list* recNoAsignados;
+		recNoAsignados = list_create();
 		recLiberados = list_create();
 		recAsignados = list_create();
 		Planificador *planificadorNivel = malloc(sizeof(Planificador));
@@ -237,14 +239,14 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 		recibirMensaje(socket, mensaje);
 		log_info(loggerOrquestador, "Se recibio un mensaje tipo (%d) del (%s)", mensaje->PayloadDescriptor, nombreNivel);
 		switch (mensaje->PayloadDescriptor) {
-		case RECURSOS_LIBERADOS:
 
-			streamA->length=mensaje->PayLoadLength;
-			streamA->data=mensaje->Payload;
-			list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
-			log_debug(loggerOrquestador,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recLiberados));
-			log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
-			planificadorNivel = (Planificador*) dictionary_get(planificadores,nombreNivel);
+		case RECURSOS_LIBERADOS:
+		streamA->length=mensaje->PayLoadLength;
+		streamA->data=mensaje->Payload;
+		list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
+		log_debug(loggerOrquestador,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recLiberados));
+		log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
+		planificadorNivel = (Planificador*) dictionary_get(planificadores,nombreNivel);
 			while(!(list_is_empty(recLiberados) || list_is_empty(planificadorNivel->bloqueados))){
 				Personaje* personajeADesbloquear;
 				int posicionPersonaje;
@@ -260,32 +262,29 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 						personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje-1);
 						log_debug(loggerOrquestador,"Notifico al personaje: (%s) de su desbloqueo", personajeADesbloquear->simbolo);
 						enviarMensaje(personajeADesbloquear->socket,&mensajeDeDesbloqueo);
-						list_add(recAsignados,unRecurso);
+						list_add(recAsignados,unRecurso);//No lo utilizo.
 						log_debug(loggerOrquestador,"Paso al personaje: (%s) de la listaBloqueados a la listaListos",personajeADesbloquear->simbolo);
 						queue_push(planificadorNivel->listos,personajeADesbloquear);
 						list_remove(planificadorNivel->bloqueados,posicionPersonaje-1);
-					} else {
-						log_debug(loggerOrquestador,"No se asigno ningun recurso.");
-						}
+					}
+					else {
+						list_add(recNoAsignados,unRecurso);
+						log_debug(loggerOrquestador,"Elrecurso:(%s) no se re-asigno a ningun personaje", unRecurso);
+					}
 			}
-
-			if(list_is_empty(recAsignados)==0){
-				t_stream* stream = malloc(sizeof(t_stream));
-				stream = NivelRecursosLiberados_serializer(recAsignados);
-				log_debug(loggerOrquestador,"Se acaba de serializar la lista de recursosAsignados para enviarla al procesoNivel");
-				mensajeRecursosAsignados->PayloadDescriptor= RECURSOS_ASIGNADOS;
-				mensajeRecursosAsignados->PayLoadLength = stream->length;
-				mensajeRecursosAsignados->Payload= stream->data;
-			} else {
-				//Ningun recurso se re-asigno.
-				mensajeRecursosAsignados->PayloadDescriptor= RECURSOS_NO_ASIGNADOS;
-				mensajeRecursosAsignados->PayLoadLength = sizeof(char);
-				mensajeRecursosAsignados->Payload= "p";//no importa su valor
+			while(!list_is_empty(recLiberados)){
+				char* unRecurso = list_remove(recLiberados,0);
+				list_add(recNoAsignados,unRecurso);
 			}
-
-			log_debug(loggerOrquestador,"Se envian los recursos asignados al Nivel: (%S)", nombreNivel);
-			enviarMensaje(socket,mensajeRecursosAsignados);
-			break;
+		t_stream* stream = malloc(sizeof(t_stream));
+		stream = NivelRecursosLiberados_serializer(recNoAsignados);
+		log_debug(loggerOrquestador,"Se acaba de serializar la lista de recursosNoAsignados para enviarla al procesoNivel");
+		mensajeRecursosAsignados->PayloadDescriptor= RECURSOS_NO_ASIGNADOS;
+		mensajeRecursosAsignados->PayLoadLength = stream->length;
+		mensajeRecursosAsignados->Payload= stream->data;
+		log_debug(loggerOrquestador,"Se envian los recursos NO asignados al Nivel: (%S)", nombreNivel);
+		enviarMensaje(socket,mensajeRecursosAsignados);
+		break;
 		case CHEQUEO_INTERBLOQUEO:
 			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
 			break;
