@@ -117,7 +117,11 @@ t_list* particiones(t_memoria segmento) {
 			list_add(listaParticiones,new);
 		}
 
-		list=listaParticiones;
+		int i;
+		for (i = 0;i < list_size(listaParticiones); i++){
+			t_particion *particion = list_get(listaParticiones, i);
+			list_add(list, particion);
+		}
 		list_sort(list, (void*) _particion_menor);
 	}
     return list;
