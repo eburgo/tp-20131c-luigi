@@ -45,7 +45,7 @@ void sacarAlPersonajeDeEstadoDePersonajes(Personaje* personaje);
 // le agrega al personaje el recurso que recibio
 void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso);
 //Actualiza la caja de recursos segun los recursos que fueron re-asignados
-void actualizarRecursos (t_list* recAsignados);
+void actualizarRecursos(t_list* recAsignados);
 
 //Globales
 Nivel* nivel;
@@ -201,14 +201,15 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 	log_debug(logger, "Se recibio mensaje de inicializacion.");
 
 	Personaje*personaje = inicializarPersonaje(mensajeInicializar.Payload);
-	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ", personaje->simbolo);
+	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ",
+			personaje->simbolo);
 	enviarMensaje(*socketConPersonaje, &mensajeInicializar);
 	while (terminoElNivel == 0) {
-		mensajeARecibir=malloc(sizeof(MPS_MSG));
+		mensajeARecibir = malloc(sizeof(MPS_MSG));
 		nivel_gui_dibujar(itemsEnNivel);
 		recibirMensaje(*socketConPersonaje, mensajeARecibir);
 
-		log_debug(logger, "Se recibio un mensaje tipo: %d", mensajeARecibir->PayloadDescriptor);
+		log_debug(logger, "Se recibio un mensaje tipo: (%d) del personaje (%s)", mensajeARecibir->PayloadDescriptor, personaje->simbolo);
 
 		switch (mensajeARecibir->PayloadDescriptor) {
 		case UBICACION_CAJA:
@@ -345,7 +346,6 @@ Personaje* inicializarPersonaje(char* simbolo) {
 }
 
 void liberarRecursos(Personaje* personaje, int socketOrquestador) {
-	MPS_MSG mensajeARecibir;
 	t_list* recursosAasignar;
 	recursosAasignar = list_create();
 	list_add_all(recursosAasignar, personaje->recursosObtenidos->elements);
@@ -354,32 +354,20 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
 	mensajeRecursosLiberados.PayLoadLength = stream->length;
 	mensajeRecursosLiberados.Payload = stream->data;
-	log_debug(logger, "Se enviaran los recursos, obtenidos por :(%s), al orquestador para que se asignen a otros personajes ", personaje->simbolo);
+	log_debug(logger, "Se enviaran los recursos, obtenidos por :(%s), al orquestador para que se asignen a otros personajes ",
+			personaje->simbolo);
 	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
 	list_clean(personaje->recursosObtenidos->elements);
-	recibirMensaje(socketOrquestador, &mensajeARecibir);
-	if( mensajeARecibir.PayloadDescriptor == RECURSOS_NO_ASIGNADOS ){
-		log_debug(logger, "El nivel recibio la lista de recursos No asignados para su actulizar los recursos");
-		t_stream* streamA=malloc(sizeof(t_stream));
-		t_list* recNoAsignados;
-		recNoAsignados = list_create();
-			streamA->length = mensajeARecibir.PayLoadLength;
-			streamA->data = mensajeARecibir.Payload;
-			list_add_all(recNoAsignados, pjsEnDeadlock_desserializer(streamA));
-			log_debug(logger,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recNoAsignados));
-			actualizarRecursos (recNoAsignados);
-	} else {
-		log_debug(logger,"Se recibio un mensaje equivocado");
-	}
+	actualizarRecursos(recursosAasignar);
 	sacarAlPersonajeDeEstadoDePersonajes(personaje);
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
 	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
 	nivel_gui_dibujar(itemsEnNivel);
 }
 
-void actualizarRecursos (t_list* recAsignados){
+void actualizarRecursos(t_list* recAsignados) {
 	while (!list_is_empty(recAsignados)) {
-		char* recurso = list_remove(recAsignados,0);
+		char* recurso = list_remove(recAsignados, 0);
 		log_debug(logger, "Se va a liberar una instancia del recurso(%s).", recurso);
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforoListaNiveles);
@@ -389,9 +377,8 @@ void actualizarRecursos (t_list* recAsignados){
 		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id, caja->quantity);
 		free(recurso);
 		pthread_mutex_unlock(&semaforoListaNiveles);
-		}
 	}
-
+}
 
 void crearCajasInit(ITEM_NIVEL* item) {
 	CrearCaja(&itemsEnNivel, item->id, item->posx, item->posy, item->quantity);
@@ -419,7 +406,7 @@ void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso)
 	bool esElRecurso(RecursoAsignado *rec) {
 		return string_equals_ignore_case(rec->nombre, recurso);
 	}
-	log_debug(logger, "El personaje (%s) recibio un recurso (%s), actualizamos su estado",personaje->simbolo, recurso);
+	log_debug(logger, "El personaje (%s) recibio un recurso (%s), actualizamos su estado", personaje->simbolo, recurso);
 	Personaje *pj = list_find(estadoDePersonajes, (void*) esElPersonaje);
 	RecursoAsignado *rec = list_find(pj->itemsAsignados, (void*) esElRecurso);
 	if (rec == NULL ) {

@@ -59,7 +59,8 @@ int iniciarOrquestador() {
 			log_error(loggerOrquestador, "Error al aceptar una conexión.");
 			return EXIT_FAILURE;
 		}
-		log_debug(loggerOrquestador, "Conexion aceptada. se crea un hilo para manejar la conexion con el socket (%d)", *socketNuevaConexion);
+		log_debug(loggerOrquestador, "Conexion aceptada. se crea un hilo para manejar la conexion con el socket (%d)",
+				*socketNuevaConexion);
 		pthread_create(thread, NULL, (void*) manejarConexion, socketNuevaConexion);
 	}
 
@@ -81,17 +82,17 @@ void manejarConexion(int* socket) {
 		log_info(loggerOrquestador, "Socket (%d) - Se conecto un nivel", *socket);
 		NivelDatos *nivelDatos = NivelDatos_desserializer(mensaje.Payload);
 		log_debug(loggerOrquestador, "Socket (%d) - Se va a registrar el (%s)", *socket, nivelDatos->nombre);
-		if(registrarNivel(nivelDatos, *socket) == 0){
+		if (registrarNivel(nivelDatos, *socket) == 0) {
 			log_debug(loggerOrquestador, "Socket (%d) - Iniciando planificador del (%s)", *socket, nivelDatos->nombre);
 			iniciarUnPlanificador(nivelDatos->nombre);
 			log_info(loggerOrquestador, "Socket (%d) - Hilo del planificador del (%s) generado con exito", *socket, nivelDatos->nombre);
-			log_debug(loggerOrquestador, "Socket (%d) - Niveles (%d), Planificadores (%d)", *socket, dictionary_size(niveles), dictionary_size(planificadores));
-			enviarMensaje(*socket,&mensaje);
+			log_debug(loggerOrquestador, "Socket (%d) - Niveles (%d), Planificadores (%d)", *socket, dictionary_size(niveles),
+					dictionary_size(planificadores));
+			enviarMensaje(*socket, &mensaje);
 			esperarMensajesDeNivel(nivelDatos->nombre, *socket);
-		}
-		else {
-			mensaje.PayloadDescriptor=ERROR_MENSAJE;
-			enviarMsjError(socket,"fallo registro");
+		} else {
+			mensaje.PayloadDescriptor = ERROR_MENSAJE;
+			enviarMsjError(socket, "fallo registro");
 		}
 		break;
 	case PJ_PIDE_NIVEL:
@@ -122,12 +123,12 @@ void manejarConexion(int* socket) {
 		free(nivel);
 		break;
 	case FINALIZO_NIVELES:
-		log_debug(loggerOrquestador,"El personaje (%s) termino su plan de niveles", mensaje.Payload);
+		log_debug(loggerOrquestador, "El personaje (%s) termino su plan de niveles", mensaje.Payload);
 		indice = buscarSimboloPersonaje(personajes, mensaje.Payload);
 		list_remove_and_destroy_element(personajes, indice, free);
 		if (list_size(personajes) == 0) {
-		log_debug(loggerOrquestador,"Todos los personajes terminaron de forma correcta, se llama a koopa.");
-		llamarKoopa();
+			log_debug(loggerOrquestador, "Todos los personajes terminaron de forma correcta, se llama a koopa.");
+			llamarKoopa();
 		}
 		break;
 	default:
@@ -148,8 +149,8 @@ void enviarMsjError(int *socket, char* msjError) {
 
 int registrarNivel(NivelDatos *nivelDatos, int socket) {
 	Nivel* nivel;
-	nivel=dictionary_get(niveles,nivelDatos->nombre);
-	if(nivel!=NULL){
+	nivel = dictionary_get(niveles, nivelDatos->nombre);
+	if (nivel != NULL ) {
 		log_info(loggerOrquestador, "Socket (%d) - El nivel (%s), ya existe.", socket, nivel->nombre);
 		return 1;
 	}
@@ -161,7 +162,8 @@ int registrarNivel(NivelDatos *nivelDatos, int socket) {
 	pthread_mutex_lock(&semaforo_niveles);
 	dictionary_put(niveles, nivel->nombre, nivel);
 	pthread_mutex_unlock(&semaforo_niveles);
-	log_info(loggerOrquestador, "Socket (%d) - Registro completo del nivel (%s,puerto:%d,ip:%s)", socket, nivel->nombre, nivel->puerto, nivel->ip);
+	log_info(loggerOrquestador, "Socket (%d) - Registro completo del nivel (%s,puerto:%d,ip:%s)", socket, nivel->nombre, nivel->puerto,
+			nivel->ip);
 	return 0;
 }
 
@@ -223,135 +225,115 @@ void levantarConfiguracion(char* path, int *quantum, int *tiempoAccion) {
 
 void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 	MPS_MSG* mensaje;
-	int nivelSigueVivo=1;
+	int nivelSigueVivo = 1;
 	while (nivelSigueVivo) {
 		t_list* recLiberados;
-		t_list* recAsignados;
-		t_list* recNoAsignados;
-		recNoAsignados = list_create();
 		recLiberados = list_create();
-		recAsignados = list_create();
 		Planificador *planificadorNivel = malloc(sizeof(Planificador));
-		MPS_MSG* mensajeRecursosAsignados;
-		mensajeRecursosAsignados=malloc(sizeof(MPS_MSG));
 		mensaje = malloc(sizeof(MPS_MSG));
-		t_stream* streamA=malloc(sizeof(t_stream));
+		t_stream* streamA = malloc(sizeof(t_stream));
 		log_debug(loggerOrquestador, "Socket (%d) - Esperando mensajes del (%s)", socket, nombreNivel);
 		recibirMensaje(socket, mensaje);
 		log_info(loggerOrquestador, "Se recibio un mensaje tipo (%d) del (%s)", mensaje->PayloadDescriptor, nombreNivel);
 		switch (mensaje->PayloadDescriptor) {
 
 		case RECURSOS_LIBERADOS:
-		streamA->length=mensaje->PayLoadLength;
-		streamA->data=mensaje->Payload;
-		list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
-		log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
-		pthread_mutex_lock(&semaforo_niveles);
-		planificadorNivel = (Planificador*) dictionary_get(planificadores,nombreNivel);
-		pthread_mutex_unlock(&semaforo_niveles);
-			while(!(list_is_empty(recLiberados) || list_is_empty(planificadorNivel->bloqueados))){
+			streamA->length = mensaje->PayLoadLength;
+			streamA->data = mensaje->Payload;
+			list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
+			log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
+			pthread_mutex_lock(&semaforo_niveles);
+			planificadorNivel = (Planificador*) dictionary_get(planificadores, nombreNivel);
+			pthread_mutex_unlock(&semaforo_niveles);
+			while (!(list_is_empty(recLiberados) || list_is_empty(planificadorNivel->bloqueados))) {
 				Personaje* personajeADesbloquear;
 				int posicionPersonaje;
-				char* unRecurso = list_remove(recLiberados,0);
-				posicionPersonaje = list_find_personaje(planificadorNivel->bloqueados,unRecurso);
-				log_debug(loggerOrquestador,"la posicion del personaje a desbloquear es:(%d) en una lista de tamaño (%d)", posicionPersonaje, list_size(planificadorNivel->bloqueados));
-					if(posicionPersonaje != 0){
-						MPS_MSG mensajeDeDesbloqueo;
-						mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
-						mensajeDeDesbloqueo.PayLoadLength = sizeof(char);
-						mensajeDeDesbloqueo.Payload = "0"; //no tiene importancia este campo
-						personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje-1);
-						log_debug(loggerOrquestador,"Notifico al personaje: (%s) de su desbloqueo", personajeADesbloquear->simbolo);
-						enviarMensaje(personajeADesbloquear->socket,&mensajeDeDesbloqueo);
-						list_add(recAsignados,unRecurso);//No lo utilizo.
-						log_debug(loggerOrquestador,"Paso al personaje: (%s) de la listaBloqueados a la listaListos",personajeADesbloquear->simbolo);
-						queue_push(planificadorNivel->listos,personajeADesbloquear);
-						list_remove(planificadorNivel->bloqueados,posicionPersonaje-1);
-					}
-					else {
-						list_add(recNoAsignados,unRecurso);
-						log_debug(loggerOrquestador,"Elrecurso:(%s) no se re-asigno a ningun personaje", unRecurso);
-					}
+				char* unRecurso = list_remove(recLiberados, 0);
+				posicionPersonaje = buscarPersonajeQueEsteBloqueadoPor(planificadorNivel->bloqueados, unRecurso);
+				log_debug(loggerOrquestador, "la posicion del personaje a desbloquear es:(%d) en una lista de tamaño (%d)",
+						posicionPersonaje, list_size(planificadorNivel->bloqueados));
+				if (posicionPersonaje >= 0) {
+					MPS_MSG mensajeDeDesbloqueo;
+					mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
+					mensajeDeDesbloqueo.PayLoadLength = sizeof(char);
+					mensajeDeDesbloqueo.Payload = "0";
+					personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje);
+					log_debug(loggerOrquestador, "Notifico al personaje: (%s) de su desbloqueo", personajeADesbloquear->simbolo);
+					enviarMensaje(personajeADesbloquear->socket, &mensajeDeDesbloqueo);
+					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la listaListos",
+							personajeADesbloquear->simbolo);
+					queue_push(planificadorNivel->listos, personajeADesbloquear);
+					sem_post(planificadorNivel->sem);
+					list_remove(planificadorNivel->bloqueados, posicionPersonaje);
+				}
 			}
-			while(!list_is_empty(recLiberados)){
-				char* unRecurso = list_remove(recLiberados,0);
-				list_add(recNoAsignados,unRecurso);
-			}
-		t_stream* stream = malloc(sizeof(t_stream));
-		stream = NivelRecursosLiberados_serializer(recNoAsignados);
-		log_debug(loggerOrquestador,"Se acaba de serializar la lista de recursosNoAsignados para enviarla al procesoNivel");
-		mensajeRecursosAsignados->PayloadDescriptor= RECURSOS_NO_ASIGNADOS;
-		mensajeRecursosAsignados->PayLoadLength = stream->length;
-		mensajeRecursosAsignados->Payload= stream->data;
-		log_debug(loggerOrquestador,"Se envian los recursosNOasignados al Nivel:(%S)", nombreNivel);
-		enviarMensaje(socket,mensajeRecursosAsignados);
-		break;
+			break;
 		case CHEQUEO_INTERBLOQUEO:
 			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
 			break;
 		default:
 			log_debug(loggerOrquestador, "El nivel (%s) se borrara de la lista de niveles", nombreNivel);
-			nivelSigueVivo=0;
+			nivelSigueVivo = 0;
 			dictionary_remove(niveles, nombreNivel);
 			close(socket);
 			break;
 		}
 		free(mensaje);
 	}
- }
+}
 
-
-int list_find_personaje(t_list* personajesBloqueados,char* unRecurso){
+int buscarPersonajeQueEsteBloqueadoPor(t_list* personajesBloqueados, char* unRecurso) {
 	Personaje* personaje;
 	int posicion;
 	int encontre = 0;
-	for (posicion=0 ; posicion<list_size(personajesBloqueados) && !encontre; posicion++){
-		personaje = list_get(personajesBloqueados,posicion);
-			if (personaje->causaBloqueo == unRecurso) {
-				encontre=1;
-				}
+	for (posicion = 0; posicion < list_size(personajesBloqueados) && !encontre; posicion++) {
+		personaje = list_get(personajesBloqueados, posicion);
+		if (string_equals_ignore_case(personaje->causaBloqueo, unRecurso)) {
+			log_debug(loggerOrquestador, "--- (%d) (%d) --", posicion, list_size(personajesBloqueados));
+			return posicion;
+		}
 	}
-	return posicion;
+	return -1;
 }
 
-void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
+void* buscarPjAMatar(char* nombreNivel, t_list *pjsEnDeadlock) {
 	Personaje* pjAMatar;
-	int encontreAQuienMatar=0;
+	int encontreAQuienMatar = 0;
 	//esta funcion es para iterar la lista de personajes del planificador
-	void matarElPrimero(Personaje* pjEnLista){
+	void matarElPrimero(Personaje* pjEnLista) {
 		//esta funcion es para iterar la lista de pjsEnDeadlock
-		int esElPersonaje(char *pjNombre){
-				return string_equals_ignore_case(pjEnLista->simbolo, pjNombre);
+		int esElPersonaje(char *pjNombre) {
+			return string_equals_ignore_case(pjEnLista->simbolo, pjNombre);
 		}
 
 		Personaje *personaje;
-		personaje=list_find(pjsEnDeadlock,(void*)esElPersonaje);
-		if(!encontreAQuienMatar && (personaje != NULL)){
+		personaje = list_find(pjsEnDeadlock, (void*) esElPersonaje);
+		if (!encontreAQuienMatar && (personaje != NULL )) {
 			pjAMatar = pjEnLista;
-			encontreAQuienMatar=1;
+			encontreAQuienMatar = 1;
 		}
 	}
 
-	Planificador *planificador = dictionary_get(planificadores,nombreNivel);
-	list_iterate(planificador->personajes,(void*)matarElPrimero);
+	Planificador *planificador = dictionary_get(planificadores, nombreNivel);
+	list_iterate(planificador->personajes, (void*) matarElPrimero);
 	return pjAMatar;
 }
 
 char * ipDelSocket(int socket) {
-   struct sockaddr_in adr_inet;/* AF_INET */
-   int len_inet;  /* length */
+	struct sockaddr_in adr_inet;/* AF_INET */
+	int len_inet; /* length */
 
-   //obtenemos la ip que usa el socket
-   len_inet = sizeof adr_inet;
-   if ( getsockname(socket, (struct sockaddr *)&adr_inet,(socklen_t*) &len_inet) == -1 ) {
-      return NULL; //error
-   }
+	//obtenemos la ip que usa el socket
+	len_inet = sizeof adr_inet;
+	if (getsockname(socket, (struct sockaddr *) &adr_inet, (socklen_t*) &len_inet) == -1) {
+		return NULL ; //error
+	}
 
-   return inet_ntoa(adr_inet.sin_addr);
+	return inet_ntoa(adr_inet.sin_addr);
 }
 
 void llamarKoopa() {
-	char *prog[] = { "koopa","/home/utnso/Escritorio/koopa/koopa.txt", NULL };
-	execv("/home/utnso/Escritorio/koopa/koopa",prog);
+	char *prog[] = { "koopa", "/home/utnso/Escritorio/koopa/koopa.txt", NULL };
+	execv("/home/utnso/Escritorio/koopa/koopa", prog);
 }
 

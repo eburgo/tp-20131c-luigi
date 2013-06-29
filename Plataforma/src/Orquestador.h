@@ -47,7 +47,7 @@ char * ipDelSocket(int socket);
 //llama al binario koopa
 void llamarKoopa();
 //Obtengo la posicion del 1er personaje que fué bloqueado por unRecurso.
-int list_find_personaje(t_list* personajesBloqueados,char* unRecurso);
+int buscarPersonajeQueEsteBloqueadoPor(t_list* personajesBloqueados,char* unRecurso);
 
 
 
