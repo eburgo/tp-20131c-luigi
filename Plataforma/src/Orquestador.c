@@ -122,9 +122,11 @@ void manejarConexion(int* socket) {
 		free(nivel);
 		break;
 	case FINALIZO_NIVELES:
+		log_debug(loggerOrquestador,"El personaje (%s) termino su plan de niveles", mensaje.Payload);
 		indice = buscarSimboloPersonaje(personajes, mensaje.Payload);
 		list_remove_and_destroy_element(personajes, indice, free);
 		if (list_size(personajes) == 0) {
+		log_debug(loggerOrquestador,"Todos los personajes terminaron de forma correcta, se llama a koopa.");
 		llamarKoopa();
 		}
 		break;
@@ -173,7 +175,6 @@ int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion) {
 	pthread_mutex_unlock(&semaforo_niveles);
 	if (nivel == NULL )
 		return -1;
-	log_debug(loggerOrquestador, "Nivel ok.");
 	log_debug(loggerOrquestador, "Se busca el planificador (%s)", nombre);
 	pthread_mutex_lock(&semaforo_planificadores);
 	planificador = (Planificador*) dictionary_get(planificadores, nombre);
@@ -244,7 +245,6 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 		streamA->length=mensaje->PayLoadLength;
 		streamA->data=mensaje->Payload;
 		list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
-		log_debug(loggerOrquestador,"Se deserializo con exito una lista de tamaño:(%d)", list_size(recLiberados));
 		log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
 		pthread_mutex_lock(&semaforo_niveles);
 		planificadorNivel = (Planificador*) dictionary_get(planificadores,nombreNivel);
@@ -253,7 +253,6 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 				Personaje* personajeADesbloquear;
 				int posicionPersonaje;
 				char* unRecurso = list_remove(recLiberados,0);
-				log_debug(loggerOrquestador,"obtengo el recurso:(%s) de la lista.", unRecurso);
 				posicionPersonaje = list_find_personaje(planificadorNivel->bloqueados,unRecurso);
 				log_debug(loggerOrquestador,"la posicion del personaje a desbloquear es:(%d) en una lista de tamaño (%d)", posicionPersonaje, list_size(planificadorNivel->bloqueados));
 					if(posicionPersonaje != 0){
