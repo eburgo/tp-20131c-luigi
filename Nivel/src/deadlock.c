@@ -44,7 +44,7 @@ void detectarInterbloqueos() {
 			}
 			pthread_mutex_unlock(&semaforoEstadoPersonajes);
 		} else {
-			log_debug(logger, "HILO DE INTERBLOQUEOS:Hay (%d) personajes en el Nivel, no chequeamos deadlock.");
+			log_debug(logger, "HILO DE INTERBLOQUEOS:Hay (%d) personajes en el Nivel, no chequeamos deadlock.", list_size(estadoDePersonajes));
 		}
 		sleep(nivel->tiempoChequeoDeadLock);
 	}

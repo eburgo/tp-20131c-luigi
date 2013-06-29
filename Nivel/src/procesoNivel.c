@@ -40,6 +40,8 @@ ITEM_NIVEL* buscarCaja(char* cajaABuscar);
 int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje);
 // le setea al Personaje el recurso que necesita
 void actualizarRecursosNecesitadosAlPersonaje(Personaje *personaje, char *recurso);
+// Borra  al personaje de la lista de estados
+void sacarAlPersonajeDeEstadoDePersonajes(Personaje* personaje);
 // le agrega al personaje el recurso que recibio
 void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso);
 //Actualiza la caja de recursos segun los recursos que fueron re-asignados
@@ -231,6 +233,7 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 		default:
 			log_debug(logger, "El personaje (%s) envio un mensaje no esperado, se cierra la conexion.", personaje->simbolo);
 			terminoElNivel = 1;
+			liberarRecursos(personaje, socketOrquestador);
 			break;
 		}
 		free(mensajeARecibir);
@@ -274,7 +277,7 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	pthread_mutex_lock(&semaforoListaNiveles);
 	caja->quantity--;
 	restarRecurso(itemsEnNivel, caja->id);
-	log_debug(logger, "Al personaje (%s) se le dio el recurso (%c) del que quedan(%d)", personaje->simbolo, caja->id, caja->quantity);
+	log_debug(logger, "Al personaje (%s) se le dio el recurso (%c) del que ahora quedan(%d)", personaje->simbolo, caja->id, caja->quantity);
 	pthread_mutex_unlock(&semaforoListaNiveles);
 	mensaje->PayloadDescriptor = HAY_RECURSOS;
 	mensaje->PayLoadLength = sizeof(char);
@@ -351,7 +354,7 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
 	mensajeRecursosLiberados.PayLoadLength = stream->length;
 	mensajeRecursosLiberados.Payload = stream->data;
-	log_debug(logger, "Se enviaran los recursos, obtenidos por :(%s), al orquestador:(%d) para que se asignen a otros personajes ", personaje->simbolo ,socketOrquestador);
+	log_debug(logger, "Se enviaran los recursos, obtenidos por :(%s), al orquestador para que se asignen a otros personajes ", personaje->simbolo);
 	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
 	list_clean(personaje->recursosObtenidos->elements);
 	recibirMensaje(socketOrquestador, &mensajeARecibir);
@@ -368,8 +371,10 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	} else {
 		log_debug(logger,"Se recibio un mensaje equivocado");
 	}
-	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
+	sacarAlPersonajeDeEstadoDePersonajes(personaje);
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
+	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
+	nivel_gui_dibujar(itemsEnNivel);
 }
 
 void actualizarRecursos (t_list* recAsignados){
@@ -399,6 +404,14 @@ void actualizarRecursosNecesitadosAlPersonaje(Personaje *personaje, char *recurs
 	Personaje *pj = list_find(estadoDePersonajes, (void*) esElPersonaje);
 	pj->itemNecesitado = recurso;
 }
+
+void sacarAlPersonajeDeEstadoDePersonajes(Personaje *personaje) {
+	bool esElPersonaje(Personaje *pj) {
+		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
+	}
+	list_remove_by_condition(estadoDePersonajes, (void*) esElPersonaje);
+}
+
 void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso) {
 	bool esElPersonaje(Personaje *pj) {
 		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
@@ -406,19 +419,15 @@ void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso)
 	bool esElRecurso(RecursoAsignado *rec) {
 		return string_equals_ignore_case(rec->nombre, recurso);
 	}
-	log_debug(logger, "el pj recibio un recurso, actualizamos su estado");
-
+	log_debug(logger, "El personaje (%s) recibio un recurso (%s), actualizamos su estado",personaje->simbolo, recurso);
 	Personaje *pj = list_find(estadoDePersonajes, (void*) esElPersonaje);
-	log_debug(logger, "encontramos el pj en la lista de estados");
 	RecursoAsignado *rec = list_find(pj->itemsAsignados, (void*) esElRecurso);
 	if (rec == NULL ) {
-		log_debug(logger, "No encontramos el recurso en la lista de items asignados");
 		rec = malloc(sizeof(RecursoAsignado));
 		rec->nombre = recurso;
 		rec->cantidad = 1;
 		list_add(pj->itemsAsignados, rec);
 	} else {
-		log_debug(logger, "encontramos el recurso en la lista de items asignados");
 		rec->cantidad++;
 	}
 }
