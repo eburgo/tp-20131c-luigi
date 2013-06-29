@@ -291,8 +291,9 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
 			break;
 		default:
-			//si se cierra el nivel llega un msj cualquier entonces cerramos este socket.
+			log_debug(loggerOrquestador, "El nivel (%s) se borrara de la lista de niveles", nombreNivel);
 			nivelSigueVivo=0;
+			dictionary_remove(niveles, nombreNivel);
 			close(socket);
 			break;
 		}
@@ -327,7 +328,6 @@ void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
 		Personaje *personaje;
 		personaje=list_find(pjsEnDeadlock,(void*)esElPersonaje);
 		if(!encontreAQuienMatar && (personaje != NULL)){
-			printf("encontramos a quien matar\n");
 			pjAMatar = pjEnLista;
 			encontreAQuienMatar=1;
 		}
@@ -335,8 +335,6 @@ void* buscarPjAMatar(char* nombreNivel,t_list *pjsEnDeadlock){
 
 	Planificador *planificador = dictionary_get(planificadores,nombreNivel);
 	list_iterate(planificador->personajes,(void*)matarElPrimero);
-	printf("dentro del buscarPjAMatar(), el nombre que devolvemos va a ser:\n");
-	printf("%c\n",*pjAMatar->simbolo);
 	return pjAMatar;
 }
 
