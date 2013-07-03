@@ -92,7 +92,7 @@ void manejarConexion(int* socket) {
 			esperarMensajesDeNivel(nivelDatos->nombre, *socket);
 		} else {
 			mensaje.PayloadDescriptor = ERROR_MENSAJE;
-			enviarMsjError(socket, "fallo registro");
+			enviarMsjError(socket, "Fallo en el registro");
 		}
 		break;
 	case PJ_PIDE_NIVEL:
@@ -112,12 +112,11 @@ void manejarConexion(int* socket) {
 			enviarMsjError(socket, "No esta el planificador");
 			break;
 		}
-		log_debug(loggerOrquestador, "Socket (%d) - Serializando mensaje a enviar con el Nivel: (%s)", *socket, nombreNivel);
 		t_stream *stream = nivelConexion_serializer(nivel);
 		mensaje.PayloadDescriptor = PJ_PIDE_NIVEL;
 		mensaje.PayLoadLength = stream->length;
 		mensaje.Payload = stream->data;
-		log_error(loggerOrquestador, "Socket (%d) - Enviando mensaje con info del nivel", *socket);
+		log_error(loggerOrquestador, "Socket (%d) - Enviando mensaje con info del nivel solicitado", *socket);
 		enviarMensaje(*socket, &mensaje);
 		log_error(loggerOrquestador, "Socket (%d) - Info enviada con exito", *socket);
 		free(nivel);
@@ -241,7 +240,7 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			streamA->length = mensaje->PayLoadLength;
 			streamA->data = mensaje->Payload;
 			list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
-			log_debug(loggerOrquestador, "Se busca el planificador del nivel (%s)", nombreNivel);
+			log_debug(loggerOrquestador, "El nivel (%s) nos informa de recursos liberados, se procede a chequear si se desbloquea algun personaje", nombreNivel);
 			pthread_mutex_lock(&semaforo_niveles);
 			planificadorNivel = (Planificador*) dictionary_get(planificadores, nombreNivel);
 			pthread_mutex_unlock(&semaforo_niveles);
@@ -250,8 +249,6 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 				int posicionPersonaje;
 				char* unRecurso = list_remove(recLiberados, 0);
 				posicionPersonaje = buscarPersonajeQueEsteBloqueadoPor(planificadorNivel->bloqueados, unRecurso);
-				log_debug(loggerOrquestador, "la posicion del personaje a desbloquear es:(%d) en una lista de tamaño (%d)",
-						posicionPersonaje, list_size(planificadorNivel->bloqueados));
 				if (posicionPersonaje >= 0) {
 					MPS_MSG mensajeDeDesbloqueo;
 					mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
@@ -269,7 +266,7 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			}
 			break;
 		case CHEQUEO_INTERBLOQUEO:
-			log_debug(loggerOrquestador, "Se debe chequear el deadlock!");
+			log_debug(loggerOrquestador, "Se debe chequear implementar el deadlock!");
 			break;
 		default:
 			log_debug(loggerOrquestador, "El nivel (%s) se borrara de la lista de niveles", nombreNivel);
@@ -289,7 +286,6 @@ int buscarPersonajeQueEsteBloqueadoPor(t_list* personajesBloqueados, char* unRec
 	for (posicion = 0; posicion < list_size(personajesBloqueados) && !encontre; posicion++) {
 		personaje = list_get(personajesBloqueados, posicion);
 		if (string_equals_ignore_case(personaje->causaBloqueo, unRecurso)) {
-			log_debug(loggerOrquestador, "--- (%d) (%d) --", posicion, list_size(personajesBloqueados));
 			return posicion;
 		}
 	}
