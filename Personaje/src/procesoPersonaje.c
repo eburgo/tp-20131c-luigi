@@ -308,13 +308,10 @@ void copiarCola(t_queue *cola1,t_queue *cola2){
 	char *objeto;
 	char *objetocopia;
 	int size=queue_size(cola1);
-	printf("vamos a iterar:%d veces\n",size);
 	for(i=0;i<size;i++){
 		objeto=queue_pop(cola1);
 		objetocopia=malloc(sizeof(char)+1);
-		printf("el objeto:%d que tiene: %s\n",i,objeto);
 		strcpy(objetocopia,objeto);
-		printf("el objetocopia:%d que ahora tiene: %s\n",i,objetocopia);
 		queue_push(cola2,objetocopia);
 		queue_push(cola1,objeto);
 	}
@@ -501,7 +498,6 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_q
 		log_debug(logger, "El personaje: (%s) recibio el recurso(%s) con exito!", personaje->nombre, cajaABuscar);
 		if (queue_is_empty(objetosABuscar)) {
 			log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
-			nivelTerminado(socketPlanificador);
 			close(socketPlanificador);
 		} else {
 			recursoObtenido(socketPlanificador);
@@ -519,6 +515,7 @@ void avisarFinalizacionDelPersonaje() {
 	mensajeAEnviar->PayloadDescriptor = FINALIZO_NIVELES;
 	mensajeAEnviar->PayLoadLength = sizeof(char);
 	mensajeAEnviar->Payload = personaje->simbolo;
+	log_debug(logger, "Se le avisa al orquestador de la finalizacion de todos los niveles");
 	enviarMensaje(socketOrquestador, mensajeAEnviar);
 	free(mensajeAEnviar);
 }

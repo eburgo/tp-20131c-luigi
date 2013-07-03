@@ -59,7 +59,6 @@ int socketOrquestador;
 
 t_list *estadoDePersonajes;
 
-#define IP "127.0.0.1";
 //------ TIPOS DE MENSAJES!!------
 #define ERROR_MENSAJE 0
 #define UBICACION_CAJA 2 // Pide la ubicacion de la caja de recursos que necesita.
