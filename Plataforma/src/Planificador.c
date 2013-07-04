@@ -23,8 +23,7 @@
 #define OBTUVO_RECURSO 6
 #define MUERTE_PERSONAJE 7
 
-#define TRUE 1
-#define FALSE 0
+
 
 
 int recibirPersonajes(Planificador *planificador);
@@ -194,6 +193,17 @@ int notificarMovimientoPermitido(Personaje* personaje) {
 	return 0;
 }
 
+int notificarMuerte(Personaje* personaje) {
+	MPS_MSG mensaje;
+
+	mensaje.PayloadDescriptor = MUERTE_PERSONAJE;
+	mensaje.PayLoadLength = sizeof(char);
+	mensaje.Payload = "M";
+
+	enviarMensaje(personaje->socket, &mensaje);
+	return 0;
+}
+
 void sacarPersonaje(Planificador *planificador,Personaje *personaje,int porError){
 	int esElPersonaje(Personaje *pj){
 		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
@@ -206,7 +216,7 @@ void sacarPersonaje(Planificador *planificador,Personaje *personaje,int porError
 	pj=list_remove_by_condition(planificador->personajes,(void*)esElPersonaje);
 	FD_CLR(pj->socket,planificador->set);
 	if(!porError)
-		notificarMovimientoPermitido(pj);
+		notificarMuerte(pj);
 	free(pj);
 }
 int buscarSimboloPersonaje(t_list *self, char* nombrePersonaje) {

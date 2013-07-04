@@ -266,7 +266,23 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			}
 			break;
 		case CHEQUEO_INTERBLOQUEO:
-			log_debug(loggerOrquestador, "Se debe chequear implementar el deadlock!");
+			log_debug(loggerOrquestador, "Se debe resolver el deadlock!");
+			t_stream* stream=malloc(sizeof(t_stream));
+			stream->data = mensaje->Payload;
+			stream->length = mensaje->PayLoadLength;
+			log_debug(loggerOrquestador, "vamos a deserealizar! tamaño de datos (%d)", stream->length);
+			t_list *pjsEnDeadlock= pjsEnDeadlock_desserializer(stream);
+			log_debug(loggerOrquestador, "buscamos pj a matar!");
+			Personaje *pjAMatar =(Personaje*) buscarPjAMatar(nombreNivel,pjsEnDeadlock);
+			log_debug(loggerOrquestador, "enviamos el simbolo del pj a matar!");
+			mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
+			log_debug(loggerOrquestador, "el nombre del pj : (%s)", pjAMatar->simbolo);
+			mensaje->PayLoadLength = strlen(pjAMatar->simbolo)+1;
+			mensaje->Payload=pjAMatar->simbolo;
+			enviarMensaje(socket,mensaje);
+			log_debug(loggerOrquestador, "se envio el msj, buscamos el planificador del (%s) para sacar el pj.",nombreNivel);
+			sacarPersonaje(dictionary_get(planificadores,nombreNivel),pjAMatar,FALSE);
+			free(stream);
 			break;
 		default:
 			log_debug(loggerOrquestador, "El nivel (%s) se borrara de la lista de niveles", nombreNivel);

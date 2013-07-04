@@ -36,7 +36,7 @@ void detectarInterbloqueos() {
 			pthread_mutex_lock(&semaforoEstadoPersonajes);
 			log_debug(logger, "HILO DE INTERBLOQUEOS: se van a filtrar los personajes que necesitan recursos.");
 			personajesFiltrados = (t_list*) list_filter(estadoDePersonajes, (void*) necesitaRecursos);
-			if (list_size(personajesFiltrados) > 0) {
+			if (list_size(personajesFiltrados) > 1) {
 				log_debug(logger, "HILO DE INTERBLOQUEOS: se van a simularEntregas, tenemos (%d) personajes.", list_size(personajesFiltrados));
 				simularEntregas(personajesFiltrados);
 			} else {

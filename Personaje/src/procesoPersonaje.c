@@ -330,6 +330,9 @@ void esperarDesbloqueo(int socketOrquestador) {
 		if (mensajeARecibir.PayloadDescriptor == DESBLOQUEAR) {
 			bloqueado = 0;
 		}
+		if (mensajeARecibir.PayloadDescriptor == MUERTE_PERSONAJE ){
+			perderVida();
+		}
 	}
 }
 
