@@ -59,8 +59,7 @@ int iniciarOrquestador() {
 			log_error(loggerOrquestador, "Error al aceptar una conexión.");
 			return EXIT_FAILURE;
 		}
-		log_debug(loggerOrquestador, "Conexion aceptada. se crea un hilo para manejar la conexion con el socket (%d)",
-				*socketNuevaConexion);
+		log_debug(loggerOrquestador, "Conexion aceptada. se crea un hilo para manejar la conexion con el socket (%d)", *socketNuevaConexion);
 		pthread_create(thread, NULL, (void*) manejarConexion, socketNuevaConexion);
 	}
 
@@ -86,8 +85,7 @@ void manejarConexion(int* socket) {
 			log_debug(loggerOrquestador, "Socket (%d) - Iniciando planificador del (%s)", *socket, nivelDatos->nombre);
 			iniciarUnPlanificador(nivelDatos->nombre);
 			log_info(loggerOrquestador, "Socket (%d) - Hilo del planificador del (%s) generado con exito", *socket, nivelDatos->nombre);
-			log_debug(loggerOrquestador, "Socket (%d) - Niveles (%d), Planificadores (%d)", *socket, dictionary_size(niveles),
-					dictionary_size(planificadores));
+			log_debug(loggerOrquestador, "Socket (%d) - Niveles (%d), Planificadores (%d)", *socket, dictionary_size(niveles), dictionary_size(planificadores));
 			enviarMensaje(*socket, &mensaje);
 			esperarMensajesDeNivel(nivelDatos->nombre, *socket);
 		} else {
@@ -161,8 +159,7 @@ int registrarNivel(NivelDatos *nivelDatos, int socket) {
 	pthread_mutex_lock(&semaforo_niveles);
 	dictionary_put(niveles, nivel->nombre, nivel);
 	pthread_mutex_unlock(&semaforo_niveles);
-	log_info(loggerOrquestador, "Socket (%d) - Registro completo del nivel (%s,puerto:%d,ip:%s)", socket, nivel->nombre, nivel->puerto,
-			nivel->ip);
+	log_info(loggerOrquestador, "Socket (%d) - Registro completo del nivel (%s,puerto:%d,ip:%s)", socket, nivel->nombre, nivel->puerto, nivel->ip);
 	return 0;
 }
 
@@ -239,6 +236,7 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 		case RECURSOS_LIBERADOS:
 			streamA->length = mensaje->PayLoadLength;
 			streamA->data = mensaje->Payload;
+			int seDesbloqueoPersonaje = 0;
 			list_add_all(recLiberados, pjsEnDeadlock_desserializer(streamA));
 			log_debug(loggerOrquestador, "El nivel (%s) nos informa de recursos liberados, se procede a chequear si se desbloquea algun personaje", nombreNivel);
 			pthread_mutex_lock(&semaforo_niveles);
@@ -251,37 +249,56 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 				posicionPersonaje = buscarPersonajeQueEsteBloqueadoPor(planificadorNivel->bloqueados, unRecurso);
 				if (posicionPersonaje >= 0) {
 					MPS_MSG mensajeDeDesbloqueo;
+					MPS_MSG mensajeLiberacionPersonaje;
 					mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
 					mensajeDeDesbloqueo.PayLoadLength = sizeof(char);
 					mensajeDeDesbloqueo.Payload = "0";
 					personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje);
+
 					log_debug(loggerOrquestador, "Notifico al personaje: (%s) de su desbloqueo", personajeADesbloquear->simbolo);
 					enviarMensaje(personajeADesbloquear->socket, &mensajeDeDesbloqueo);
-					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la listaListos",
-							personajeADesbloquear->simbolo);
+					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la listaListos", personajeADesbloquear->simbolo);
+
+					PersonajeLiberado personajeLiberado;
+					personajeLiberado.recursoAAsignar = *unRecurso;
+					personajeLiberado.simboloPersonaje = *personajeADesbloquear->simbolo;
+					mensajeLiberacionPersonaje.PayloadDescriptor = PERSONAJE_LIBERADO;
+					mensajeLiberacionPersonaje.PayLoadLength = sizeof(PersonajeLiberado);
+					mensajeLiberacionPersonaje.Payload = &personajeLiberado;
+					enviarMensaje(socket, &mensajeLiberacionPersonaje);
+
 					queue_push(planificadorNivel->listos, personajeADesbloquear);
 					sem_post(planificadorNivel->sem);
 					list_remove(planificadorNivel->bloqueados, posicionPersonaje);
+					seDesbloqueoPersonaje = 1;
 				}
+			}
+			if (seDesbloqueoPersonaje == 0) {
+				log_debug(loggerOrquestador, "No se encontraron personajes para desbloquear con los recursos liberados por el nivel (%s)", nombreNivel);
+				MPS_MSG mensajeNoPersonajesParaLiberar;
+				mensajeNoPersonajesParaLiberar.PayloadDescriptor = SIN_PERSONAJES_PARA_LIBERAR;
+				mensajeNoPersonajesParaLiberar.PayLoadLength = sizeof(char);
+				mensajeNoPersonajesParaLiberar.Payload = "0";
+				enviarMensaje(socket, &mensajeNoPersonajesParaLiberar);
 			}
 			break;
 		case CHEQUEO_INTERBLOQUEO:
 			log_debug(loggerOrquestador, "Se debe resolver el deadlock!");
-			t_stream* stream=malloc(sizeof(t_stream));
+			t_stream* stream = malloc(sizeof(t_stream));
 			stream->data = mensaje->Payload;
 			stream->length = mensaje->PayLoadLength;
 			log_debug(loggerOrquestador, "vamos a deserealizar! tamaño de datos (%d)", stream->length);
-			t_list *pjsEnDeadlock= pjsEnDeadlock_desserializer(stream);
+			t_list *pjsEnDeadlock = pjsEnDeadlock_desserializer(stream);
 			log_debug(loggerOrquestador, "buscamos pj a matar!");
-			Personaje *pjAMatar =(Personaje*) buscarPjAMatar(nombreNivel,pjsEnDeadlock);
+			Personaje *pjAMatar = (Personaje*) buscarPjAMatar(nombreNivel, pjsEnDeadlock);
 			log_debug(loggerOrquestador, "enviamos el simbolo del pj a matar!");
 			mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
 			log_debug(loggerOrquestador, "el nombre del pj : (%s)", pjAMatar->simbolo);
-			mensaje->PayLoadLength = strlen(pjAMatar->simbolo)+1;
-			mensaje->Payload=pjAMatar->simbolo;
-			enviarMensaje(socket,mensaje);
-			log_debug(loggerOrquestador, "se envio el msj, buscamos el planificador del (%s) para sacar el pj.",nombreNivel);
-			sacarPersonaje(dictionary_get(planificadores,nombreNivel),pjAMatar,FALSE);
+			mensaje->PayLoadLength = strlen(pjAMatar->simbolo) + 1;
+			mensaje->Payload = pjAMatar->simbolo;
+			enviarMensaje(socket, mensaje);
+			log_debug(loggerOrquestador, "se envio el msj, buscamos el planificador del (%s) para sacar el pj.", nombreNivel);
+			sacarPersonaje(dictionary_get(planificadores, nombreNivel), pjAMatar, FALSE);
 			free(stream);
 			break;
 		default:

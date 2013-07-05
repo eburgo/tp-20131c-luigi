@@ -28,3 +28,8 @@ typedef struct{
 	int quantum;
 	char* causaBloqueo;
 }__attribute__((__packed__)) Personaje;
+
+typedef struct{
+	char simboloPersonaje;
+	char recursoAAsignar;
+}__attribute__((__packed__)) PersonajeLiberado;

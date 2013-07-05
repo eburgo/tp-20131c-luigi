@@ -46,6 +46,10 @@ void sacarAlPersonajeDeEstadoDePersonajes(Personaje* personaje);
 void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso);
 //Actualiza la caja de recursos segun los recursos que fueron re-asignados
 void actualizarRecursos(t_list* recAsignados);
+// Actualiza el recurso que se le dio por liberacion de los mismos
+void asignarRecursoAlPersonajeDeEstadoDePersonajes(char personajeSimbolo, char* recurso);
+//Busca un recurso de la lista de recursos y lo elimina
+char* eliminarUnRecursoAsignado(t_list* recursosLiberados, char recursoABorrar);
 
 //Globales
 Nivel* nivel;
@@ -73,6 +77,7 @@ t_list *estadoDePersonajes;
 #define RECURSOS_LIBERADOS 9
 #define RECURSOS_ASIGNADOS 10
 #define RECURSOS_NO_ASIGNADOS 11
+#define PERSONAJE_LIBERADO 15
 
 // A recibir
 #define MUERTE_PERSONAJE 7
@@ -200,8 +205,7 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 	log_debug(logger, "Se recibio mensaje de inicializacion.");
 
 	Personaje*personaje = inicializarPersonaje(mensajeInicializar.Payload);
-	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ",
-			personaje->simbolo);
+	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ", personaje->simbolo);
 	enviarMensaje(*socketConPersonaje, &mensajeInicializar);
 	while (terminoElNivel == 0) {
 		mensajeARecibir = malloc(sizeof(MPS_MSG));
@@ -345,23 +349,48 @@ Personaje* inicializarPersonaje(char* simbolo) {
 }
 
 void liberarRecursos(Personaje* personaje, int socketOrquestador) {
-	t_list* recursosAasignar;
-	recursosAasignar = list_create();
-	list_add_all(recursosAasignar, personaje->recursosObtenidos->elements);
-	t_stream* stream = NivelRecursosLiberados_serializer(recursosAasignar);
+	MPS_MSG mensajeARecibir;
+	t_list* recursosALiberar;
+	recursosALiberar = list_create();
+	list_add_all(recursosALiberar, personaje->recursosObtenidos->elements);
+	t_stream* stream = NivelRecursosLiberados_serializer(recursosALiberar);
 	MPS_MSG mensajeRecursosLiberados;
 	mensajeRecursosLiberados.PayloadDescriptor = RECURSOS_LIBERADOS;
 	mensajeRecursosLiberados.PayLoadLength = stream->length;
 	mensajeRecursosLiberados.Payload = stream->data;
-	log_debug(logger, "Se enviaran los recursos, obtenidos por :(%s), al orquestador para que se asignen a otros personajes ",
-			personaje->simbolo);
+	log_debug(logger, "Se enviaran los recursos, obtenidos por :(%s), al orquestador para que se asignen a otros personajes ", personaje->simbolo);
 	enviarMensaje(socketOrquestador, &mensajeRecursosLiberados);
 	list_clean(personaje->recursosObtenidos->elements);
-	actualizarRecursos(recursosAasignar);
+	recibirMensaje(socketOrquestador, &mensajeARecibir);
+	if (mensajeARecibir.PayloadDescriptor == PERSONAJE_LIBERADO) {
+		PersonajeLiberado* personajeLiberado = malloc(sizeof(PersonajeLiberado));
+		personajeLiberado = mensajeARecibir.Payload;
+		log_debug(logger, "El personaje (%c) fue liberado porque se le otorgo el recurso (%c).", personajeLiberado->simboloPersonaje, personajeLiberado->recursoAAsignar);
+		char* recursoEliminado = eliminarUnRecursoAsignado(recursosALiberar, personajeLiberado->recursoAAsignar);
+		asignarRecursoAlPersonajeDeEstadoDePersonajes(personajeLiberado->simboloPersonaje, recursoEliminado);
+	}
+	actualizarRecursos(recursosALiberar);
 	sacarAlPersonajeDeEstadoDePersonajes(personaje);
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
 	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
 	nivel_gui_dibujar(itemsEnNivel);
+}
+
+char* eliminarUnRecursoAsignado(t_list* recursosLiberados, char recursoABorrar) {
+	bool esElRecurso(char *recurso) {
+		return *recurso == recursoABorrar;
+	}
+	char* recursoEncontrado = list_find(recursosLiberados, (void*) esElRecurso);
+	list_remove_by_condition(recursosLiberados, (void*) esElRecurso);
+	return recursoEncontrado;
+}
+
+void asignarRecursoAlPersonajeDeEstadoDePersonajes(char personajeSimbolo, char* recurso) {
+	bool esElPersonaje(Personaje *pj) {
+		return *pj->simbolo == personajeSimbolo;
+	}
+	Personaje* personajeAActualizar = list_find(estadoDePersonajes, (void*) esElPersonaje);
+	queue_push(personajeAActualizar->recursosObtenidos, recurso);
 }
 
 void actualizarRecursos(t_list* recAsignados) {

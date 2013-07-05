@@ -18,6 +18,8 @@
 #define RECURSOS_LIBERADOS 9
 #define CHEQUEO_INTERBLOQUEO 8
 #define RECURSOS_ASIGNADOS 10
+#define PERSONAJE_LIBERADO 15
+#define SIN_PERSONAJES_PARA_LIBERAR 16
 #define FINALIZO_NIVELES 20 // Notifica que el personaje termino el plan de niveles
 //#define MSJ_XX 5
 //#define MSJ_XX 6

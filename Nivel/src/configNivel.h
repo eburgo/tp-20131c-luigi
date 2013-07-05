@@ -32,6 +32,11 @@ typedef struct nivel {
 
 }__attribute__((__packed__)) Nivel;
 
+typedef struct{
+	char simboloPersonaje;
+	char recursoAAsignar;
+}__attribute__((__packed__)) PersonajeLiberado;
+
 
 
 Nivel* levantarConfiguracion(char *rutaArchivo);
