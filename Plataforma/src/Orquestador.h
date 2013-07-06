@@ -50,6 +50,9 @@ char * ipDelSocket(int socket);
 void llamarKoopa();
 //Obtengo la posicion del 1er personaje que fué bloqueado por unRecurso.
 int buscarPersonajeQueEsteBloqueadoPor(t_list* personajesBloqueados,char* unRecurso);
+//Serializador para personajes que se liberan por recursos liberados
+t_stream* colaPersonajesLiberados_serializer(t_queue* colaPersonajesLiberados);
+
 
 
 

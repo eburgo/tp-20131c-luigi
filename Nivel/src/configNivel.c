@@ -46,3 +46,4 @@ Nivel* levantarConfiguracion(char *rutaArchivo) {
 	nivel->puerto = atoi(ipCompleta);
 	return nivel;
 }
+

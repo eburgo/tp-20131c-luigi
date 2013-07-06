@@ -242,33 +242,29 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			pthread_mutex_lock(&semaforo_niveles);
 			planificadorNivel = (Planificador*) dictionary_get(planificadores, nombreNivel);
 			pthread_mutex_unlock(&semaforo_niveles);
+			t_queue* colaPersonajesLiberados = queue_create();
+			t_queue* colaPersonajesADesbloquear = queue_create();
 			while (!(list_is_empty(recLiberados) || list_is_empty(planificadorNivel->bloqueados))) {
 				Personaje* personajeADesbloquear;
 				int posicionPersonaje;
 				char* unRecurso = list_remove(recLiberados, 0);
 				posicionPersonaje = buscarPersonajeQueEsteBloqueadoPor(planificadorNivel->bloqueados, unRecurso);
 				if (posicionPersonaje >= 0) {
-					MPS_MSG mensajeDeDesbloqueo;
-					MPS_MSG mensajeLiberacionPersonaje;
-					mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
-					mensajeDeDesbloqueo.PayLoadLength = sizeof(char);
-					mensajeDeDesbloqueo.Payload = "0";
+
 					personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje);
 
-					log_debug(loggerOrquestador, "Notifico al personaje: (%s) de su desbloqueo", personajeADesbloquear->simbolo);
-					enviarMensaje(personajeADesbloquear->socket, &mensajeDeDesbloqueo);
+					PersonajeDesbloqueado* personajeDesbloqueado = malloc(sizeof(PersonajeDesbloqueado));
+					personajeDesbloqueado->simboloPersonaje = personajeADesbloquear->simbolo;
+					personajeDesbloqueado->socket = personajeADesbloquear->socket;
+					queue_push(colaPersonajesADesbloquear, personajeDesbloqueado);
+
+					PersonajeLiberado* personajeLiberado = malloc(sizeof(PersonajeLiberado));
+					personajeLiberado->recursoAAsignar = *unRecurso;
+					personajeLiberado->simboloPersonaje = *personajeADesbloquear->simbolo;
+					queue_push(colaPersonajesLiberados, personajeLiberado);
+
 					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la listaListos", personajeADesbloquear->simbolo);
-
-					PersonajeLiberado personajeLiberado;
-					personajeLiberado.recursoAAsignar = *unRecurso;
-					personajeLiberado.simboloPersonaje = *personajeADesbloquear->simbolo;
-					mensajeLiberacionPersonaje.PayloadDescriptor = PERSONAJE_LIBERADO;
-					mensajeLiberacionPersonaje.PayLoadLength = sizeof(PersonajeLiberado);
-					mensajeLiberacionPersonaje.Payload = &personajeLiberado;
-					enviarMensaje(socket, &mensajeLiberacionPersonaje);
-
 					queue_push(planificadorNivel->listos, personajeADesbloquear);
-					sem_post(planificadorNivel->sem);
 					list_remove(planificadorNivel->bloqueados, posicionPersonaje);
 					seDesbloqueoPersonaje = 1;
 				}
@@ -280,16 +276,36 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 				mensajeNoPersonajesParaLiberar.PayLoadLength = sizeof(char);
 				mensajeNoPersonajesParaLiberar.Payload = "0";
 				enviarMensaje(socket, &mensajeNoPersonajesParaLiberar);
+			} else if (seDesbloqueoPersonaje == 1) {
+				MPS_MSG mensajeLiberacionPersonaje;
+				t_stream* stream = colaPersonajesLiberados_serializer(colaPersonajesLiberados);
+				mensajeLiberacionPersonaje.PayloadDescriptor = PERSONAJE_LIBERADO;
+				mensajeLiberacionPersonaje.PayLoadLength = stream->length;
+				mensajeLiberacionPersonaje.Payload = stream->data;
+				enviarMensaje(socket, &mensajeLiberacionPersonaje);
+
+				MPS_MSG mensajeDeDesbloqueo;
+				mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
+				mensajeDeDesbloqueo.PayLoadLength = sizeof(char);
+				mensajeDeDesbloqueo.Payload = "0";
+				PersonajeDesbloqueado* personajeDesbloqueado;
+
+				while (!queue_is_empty(colaPersonajesADesbloquear)) {
+
+					personajeDesbloqueado = queue_pop(colaPersonajesADesbloquear);
+					log_debug(loggerOrquestador, "Notifico al personaje: (%s) de su desbloqueo", personajeDesbloqueado->simboloPersonaje);
+					enviarMensaje(personajeDesbloqueado->socket, &mensajeDeDesbloqueo);
+					sem_post(planificadorNivel->sem);
+				}
 			}
 			break;
 		case CHEQUEO_INTERBLOQUEO:
-			log_debug(loggerOrquestador, "Se debe resolver el deadlock!");
+			log_debug(loggerOrquestador, "Se procede a resolver el deadlock");
 			t_stream* stream = malloc(sizeof(t_stream));
 			stream->data = mensaje->Payload;
 			stream->length = mensaje->PayLoadLength;
-			log_debug(loggerOrquestador, "vamos a deserealizar! tamaño de datos (%d)", stream->length);
 			t_list *pjsEnDeadlock = pjsEnDeadlock_desserializer(stream);
-			log_debug(loggerOrquestador, "buscamos pj a matar!");
+			log_debug(loggerOrquestador, "Buscamos al personaje para matar");
 			Personaje *pjAMatar = (Personaje*) buscarPjAMatar(nombreNivel, pjsEnDeadlock);
 			log_debug(loggerOrquestador, "enviamos el simbolo del pj a matar!");
 			mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
@@ -366,3 +382,22 @@ void llamarKoopa() {
 	execv("/home/utnso/Escritorio/koopa/koopa", prog);
 }
 
+t_stream* colaPersonajesLiberados_serializer(t_queue* colaPersonajesLiberados) {
+
+	char* data = malloc(queue_size(colaPersonajesLiberados) * 2);
+	t_stream *stream = malloc(sizeof(t_stream));
+	int offset = 0, tmp_size = 0;
+	PersonajeLiberado* personaje;
+	personaje = queue_pop(colaPersonajesLiberados);
+	memcpy(data, personaje, tmp_size = sizeof(PersonajeLiberado));
+	offset = tmp_size;
+	while (!queue_is_empty(colaPersonajesLiberados)) {
+		personaje = queue_pop(colaPersonajesLiberados);
+		memcpy(data + offset, personaje, tmp_size = sizeof(PersonajeLiberado));
+		offset += tmp_size;
+	}
+	stream->length = offset;
+	stream->data = data;
+
+	return stream;
+}

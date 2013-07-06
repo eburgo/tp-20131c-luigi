@@ -50,6 +50,8 @@ void actualizarRecursos(t_list* recAsignados);
 void asignarRecursoAlPersonajeDeEstadoDePersonajes(char personajeSimbolo, char* recurso);
 //Busca un recurso de la lista de recursos y lo elimina
 char* eliminarUnRecursoAsignado(t_list* recursosLiberados, char recursoABorrar);
+// Desserializador para los personajes que se van a liberar por X recurso.
+t_queue* colaLiberacionDePersonajes_desserializer(t_stream *stream);
 
 //Globales
 Nivel* nivel;
@@ -363,11 +365,17 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	list_clean(personaje->recursosObtenidos->elements);
 	recibirMensaje(socketOrquestador, &mensajeARecibir);
 	if (mensajeARecibir.PayloadDescriptor == PERSONAJE_LIBERADO) {
-		PersonajeLiberado* personajeLiberado = malloc(sizeof(PersonajeLiberado));
-		personajeLiberado = mensajeARecibir.Payload;
-		log_debug(logger, "El personaje (%c) fue liberado porque se le otorgo el recurso (%c).", personajeLiberado->simboloPersonaje, personajeLiberado->recursoAAsignar);
-		char* recursoEliminado = eliminarUnRecursoAsignado(recursosALiberar, personajeLiberado->recursoAAsignar);
-		asignarRecursoAlPersonajeDeEstadoDePersonajes(personajeLiberado->simboloPersonaje, recursoEliminado);
+		t_stream* stream = malloc(sizeof(t_stream));
+		stream->data = mensajeARecibir.Payload;
+		stream->length = mensajeARecibir.PayLoadLength;
+		t_queue* colaPersonajesLiberados = colaLiberacionDePersonajes_desserializer(stream);
+		PersonajeLiberado* personajeLiberado;
+		while (!queue_is_empty(colaPersonajesLiberados)) {
+			personajeLiberado = queue_pop(colaPersonajesLiberados);
+			log_debug(logger, "El personaje (%c) fue liberado porque se le otorgo el recurso (%c).", personajeLiberado->simboloPersonaje, personajeLiberado->recursoAAsignar);
+			char* recursoEliminado = eliminarUnRecursoAsignado(recursosALiberar, personajeLiberado->recursoAAsignar);
+			asignarRecursoAlPersonajeDeEstadoDePersonajes(personajeLiberado->simboloPersonaje, recursoEliminado);
+		}
 	}
 	actualizarRecursos(recursosALiberar);
 	sacarAlPersonajeDeEstadoDePersonajes(personaje);
@@ -445,5 +453,27 @@ void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso)
 	} else {
 		rec->cantidad++;
 	}
+	pj->itemNecesitado = NULL;
+	log_debug(logger, "El personaje (%s) tiene (%d) items asignados", pj->simbolo, list_size(pj->itemsAsignados));
 }
 
+t_queue* colaLiberacionDePersonajes_desserializer(t_stream *stream){
+	t_queue *colaPersonajes = queue_create();
+	int offset = 0, tmp_size = 2;
+	PersonajeLiberado* personaje;
+	while (offset < stream->length) {
+		personaje = malloc(sizeof(PersonajeLiberado));
+		memcpy(personaje, stream->data + offset, tmp_size);
+		queue_push(colaPersonajes, personaje);
+		offset+=tmp_size;
+	}
+	return colaPersonajes;
+}
+
+ITEM_NIVEL* buscarCaja(char* id) {
+	int esElRecurso(ITEM_NIVEL* recursoLista) {
+		char* idABuscar = string_substring_until(&(recursoLista->id), 1);
+		return string_equals_ignore_case(idABuscar, id);
+	}
+	return list_find(nivel->items, (void*) esElRecurso);
+}

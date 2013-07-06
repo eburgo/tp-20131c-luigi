@@ -2,14 +2,14 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 //estructuras
-typedef struct{
+typedef struct {
 	char* nombre;
 	char* ip;
 	int puerto;
 	int socket;
 }__attribute__((__packed__)) Nivel;
 
-typedef struct{
+typedef struct {
 	char* nombreNivel; //nivel q planifica... se entiende no?
 	char* ip;
 	int socketEscucha;
@@ -22,14 +22,21 @@ typedef struct{
 
 }__attribute__((__packed__)) Planificador;
 
-typedef struct{
+typedef struct {
 	char* simbolo;
 	int socket;
 	int quantum;
 	char* causaBloqueo;
 }__attribute__((__packed__)) Personaje;
 
-typedef struct{
+typedef struct {
 	char simboloPersonaje;
 	char recursoAAsignar;
 }__attribute__((__packed__)) PersonajeLiberado;
+
+typedef struct {
+	char* simboloPersonaje;
+	int socket;
+}__attribute__((__packed__)) PersonajeDesbloqueado;
+
+
