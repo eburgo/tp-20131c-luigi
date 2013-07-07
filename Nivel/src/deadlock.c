@@ -123,26 +123,26 @@ void simularEntregas(t_list *procesosPersonajes) {
 	if (list_size(auxPersonajes) > 0)
 		list_iterate(auxPersonajes, (void*) mostrarEstado);
 	else
-		log_debug(logger, "no hay pjs en deadlock o starvation");
+		log_debug(logger, "HILO DE INTERBLOQUEOS: no hay pjs en deadlock o starvation");
 
 	auxPersonajes = list_filter(auxPersonajes, (void*) estaPersonajeEnDeadlock);
 	if (list_size(auxPersonajes) > 0) {
 		if (nivel->recovery == 1) {
-			log_debug(logger, "se envia mensaje al socketOrquestadorpara resolver deadlock");
+			log_debug(logger, "HILO DE INTERBLOQUEOS: se envia mensaje al socketOrquestadorpara resolver deadlock");
 			t_stream *stream = pjsEnDeadlock_serializer(auxPersonajes);
 			mensaje->Payload = stream->data;
 			mensaje->PayLoadLength = stream->length;
 			enviarMensaje(socketOrquestador, mensaje);
 			recibirMensaje(socketOrquestador, mensaje);
 			char* pjSimbolo = mensaje->Payload;
-			log_debug(logger, "El orquestador mato al pj (%s)", pjSimbolo);
+			log_debug(logger, "HILO DE INTERBLOQUEOS: El orquestador mato al pj (%s)", pjSimbolo);
 			Personaje *pj = buscarPersonaje(estadoDePersonajes, pjSimbolo);
-			log_debug(logger, "vamos a liberar recursos para el pj (%s)", pj->simbolo);
-			log_debug(logger, "tamaño de la cola del pj (%s): %d", pj->simbolo, queue_size(pj->recursosObtenidos));
+			log_debug(logger, "HILO DE INTERBLOQUEOS: vamos a liberar recursos para el pj (%s)", pj->simbolo);
+			log_debug(logger, "HILO DE INTERBLOQUEOS: tamaño de la cola del pj (%s): %d", pj->simbolo, queue_size(pj->recursosObtenidos));
 			liberarRecursos(pj, socketOrquestador);
 
 		} else {
-			log_debug(logger, "Recovery no activado");
+			log_debug(logger, "HILO DE INTERBLOQUEOS: Recovery no activado");
 		}
 	}
 
@@ -151,15 +151,18 @@ void simularEntregas(t_list *procesosPersonajes) {
 }
 
 void actualizarDisponibles(t_list *recDisponibles, Personaje *pj) {
+	t_list* itemsAsignadosAux =list_create();
+
 	int esElRecurso(ITEM_NIVEL* recursoLista) {
 		char* idABuscar = string_substring_until(&(recursoLista->id), 1);
-		return string_equals_ignore_case(idABuscar, ((RecursoAsignado*) list_get(pj->itemsAsignados, 0))->nombre);
+		return string_equals_ignore_case(idABuscar, ((RecursoAsignado*) list_get(itemsAsignadosAux, 0))->nombre);
 	}
 
-	while (list_size(pj->itemsAsignados) != 0) {
+	list_add_all(itemsAsignadosAux,pj->itemsAsignados);
+	while (list_size(itemsAsignadosAux) != 0) {
 		ITEM_NIVEL *recurso = list_find(recDisponibles, (void*) esElRecurso);
-		recurso->quantity = recurso->quantity + ((RecursoAsignado*) list_get(pj->itemsAsignados, 0))->cantidad;
-		list_remove(pj->itemsAsignados, 0);
+		recurso->quantity = recurso->quantity + ((RecursoAsignado*) list_get(itemsAsignadosAux, 0))->cantidad;
+		list_remove(itemsAsignadosAux, 0);
 	}
 }
 

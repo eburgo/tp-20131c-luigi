@@ -399,6 +399,7 @@ void asignarRecursoAlPersonajeDeEstadoDePersonajes(char personajeSimbolo, char* 
 	}
 	Personaje* personajeAActualizar = list_find(estadoDePersonajes, (void*) esElPersonaje);
 	queue_push(personajeAActualizar->recursosObtenidos, recurso);
+	actualizarRecursosRecibidosAlPersonaje(personajeAActualizar,recurso);
 }
 
 void actualizarRecursos(t_list* recAsignados) {

@@ -18,7 +18,7 @@ void manejarSenial(int n);
 //Procesamiento del personaje!
 int procesar();
 // Procesamiento que se realiza cuando se pierde una vida.
-int perderVida();
+int perderVida(bool porOrquestador);
 // Conectar al orquestador, devuelve el socketOrquestador, y si hay error devuelve 1.
 int conectarAlOrquestador();
 // Recorre la lista de niveles del personaje.
@@ -122,7 +122,7 @@ void manejarSenial(int n) {
 		break;
 	case SIGTERM:
 		log_debug(logger, "El personaje %s recibio la señal SIGTERM.", personaje->nombre);
-		int resultado = perderVida();
+		int resultado = perderVida(false);
 		if (resultado == 1) {
 			exit(EXIT_FAILURE);
 		}
@@ -331,19 +331,24 @@ void esperarDesbloqueo(int socketOrquestador) {
 			bloqueado = 0;
 		}
 		if (mensajeARecibir.PayloadDescriptor == MUERTE_PERSONAJE ){
-			perderVida();
+			perderVida(true);
 		}
 	}
 }
 
-int perderVida() {
+int perderVida(bool porOrquestador) {
 	if (sacarVida(personaje) > 0) {
-		log_debug(logger, "El personaje %s perdio una vida", personaje->nombre);
+		if(porOrquestador)
+			log_debug(logger, "El personaje %s perdio una vida, causa:ORQUESTADOR", personaje->nombre);
+		else
+			log_debug(logger, "El personaje %s perdio una vida, causa:SIGTERM", personaje->nombre);
 		log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
 		liberarRecursos(socketNivel);
-		log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
-		notificarMuerte(socketPlanificador);
-		esperarConfirmacionDelPlanificador(socketPlanificador);
+		if(!porOrquestador){
+			log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
+			notificarMuerte(socketPlanificador);
+			esperarConfirmacionDelPlanificador(socketPlanificador);
+		}
 		close(socketPlanificador);
 		close(socketNivel);
 		int resultado = procesar();
@@ -375,6 +380,7 @@ int perderVida() {
 int procesar() {
 
 	int resultado = recorrerNiveles();
+	log_debug(logger, "RESULTADO DE RECORRES NIVELES (%d)", resultado);
 	if (resultado == 1) {
 		return EXIT_FAILURE;
 	}
@@ -404,7 +410,7 @@ int recorrerNiveles() {
 		if (socketOrquestador == 1) {
 			return EXIT_FAILURE;
 		}
-		log_debug(logger, "Pidiendo el proximo nivel para realizar");
+		log_debug(logger, "Pidiendo el proximo nivel para realizar (%s)",verProximoNivel(personaje)->nombre);
 		t_stream* stream = pedirNivel(personaje, socketOrquestador);
 		close(socketOrquestador);
 		if (stream->length == 0) {
