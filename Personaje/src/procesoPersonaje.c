@@ -14,7 +14,8 @@
 // ----------     Funciones      -----------
 // Recorre un nivel, recibe el socket del nivel y el socket del planificador de ese nivel.
 void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestador);
-void manejarSenial(int n);
+void enviarSeniales();
+void manejarSenial(int sig, siginfo_t *siginfo, void *context);
 //Procesamiento del personaje!
 int procesar();
 // Procesamiento que se realiza cuando se pierde una vida.
@@ -102,9 +103,7 @@ int main(int argc, char *argv[]) {
 	if (levantarConfig == 1) {
 		return EXIT_FAILURE;
 	}
-
-	signal(SIGUSR1, manejarSenial);
-	signal(SIGTERM, manejarSenial);
+	enviarSeniales();
 
 	int resultado = procesar();
 	if (resultado == 1) {
@@ -115,8 +114,29 @@ int main(int argc, char *argv[]) {
 	return EXIT_SUCCESS;
 }
 
-void manejarSenial(int n) {
-	switch (n) {
+void enviarSeniales(){
+
+	struct sigaction act;
+
+	memset (&act, '\0', sizeof(act));
+
+	act.sa_sigaction = &manejarSenial;
+
+	act.sa_flags = SA_NODEFER;
+
+	if (sigaction(SIGTERM, &act, NULL) < 0) {
+		perror ("sigaction");
+	}
+
+	sleep(5);
+	if(sigaction( SIGUSR1  , &act, NULL )==-1){
+		perror("sigaction");
+	}
+
+}
+
+void manejarSenial(int sig, siginfo_t *siginfo, void *context) {
+	switch (sig) {
 	case SIGUSR1:
 		log_debug(logger, "El personaje (%s) recibio la señal SIGUSR1. Vidas actuales: (%d)", personaje->nombre, personaje->vidas);
 		personaje->vidas = personaje->vidas + 1;
