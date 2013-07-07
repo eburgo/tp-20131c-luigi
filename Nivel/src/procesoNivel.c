@@ -460,7 +460,6 @@ void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso)
 		rec->cantidad++;
 	}
 	pj->itemNecesitado = NULL;
-	log_debug(logger, "El personaje (%s) tiene (%d) items asignados", pj->simbolo, list_size(pj->itemsAsignados));
 }
 
 t_queue* colaLiberacionDePersonajes_desserializer(t_stream *stream) {

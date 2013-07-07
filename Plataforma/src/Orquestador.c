@@ -300,21 +300,19 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			}
 			break;
 		case CHEQUEO_INTERBLOQUEO:
-			log_debug(loggerOrquestador, "Se procede a resolver el deadlock");
+			log_debug(loggerOrquestador, "Hay Deadlock en el nivel (%s), se procede a resolverlo", nombreNivel);
 			t_stream* stream = malloc(sizeof(t_stream));
 			stream->data = mensaje->Payload;
 			stream->length = mensaje->PayLoadLength;
 			t_list *pjsEnDeadlock = pjsEnDeadlock_desserializer(stream);
-			log_debug(loggerOrquestador, "Buscamos al personaje para matar");
 			Personaje *pjAMatar = (Personaje*) buscarPjAMatar(nombreNivel, pjsEnDeadlock);
-			log_debug(loggerOrquestador, "enviamos el simbolo del pj a matar!");
 			mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
-			log_debug(loggerOrquestador, "el nombre del pj : (%s)", pjAMatar->simbolo);
 			mensaje->PayLoadLength = strlen(pjAMatar->simbolo) + 1;
 			mensaje->Payload = pjAMatar->simbolo;
+			log_debug(loggerOrquestador, "Notificamos al Nivel (%s) que mataremos al personaje (%s)", nombreNivel, pjAMatar->simbolo);
 			enviarMensaje(socket, mensaje);
-			log_debug(loggerOrquestador, "se envio el msj, buscamos el planificador del (%s) para sacar el pj.", nombreNivel);
-			sacarPersonaje(dictionary_get(planificadores, nombreNivel), pjAMatar, FALSE);
+			sacarPersonaje(dictionary_get(planificadores, nombreNivel), pjAMatar, TRUE);
+			log_debug(loggerOrquestador, "Se elimino con exito del Nivel (%s) al personaje (%s)", nombreNivel, pjAMatar->simbolo);
 			free(stream);
 			break;
 		default:
