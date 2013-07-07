@@ -83,6 +83,7 @@ int socketNivel;
 #define OBTUVO_RECURSO 6 // descriptor que envia al planificador si obtuvo un recurso
 #define CAJAFUERALIMITE 8 // mensaje q recibe en la consulta de la ubicacion de una caja si la misma esta fuera del limite
 #define FINALIZO_NIVELES 20 // Notifica que el personaje termino el plan de niveles
+#define MOVIMIENTO_EXITO 12 // MEnsaje del nivel por si el movimiento se dio con exito
 int main(int argc, char *argv[]) {
 
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
@@ -173,6 +174,7 @@ int esperarConfirmacionDelPlanificador(int socketPlanificador) {
 }
 void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
+	MPS_MSG mensajeConfirmacion;
 	log_debug(logger, "El personaje esta ubicado en X:(%d) Y:(%d)", posicionActual->x, posicionActual->y);
 	log_debug(logger, "El personaje procede a moverse a la caja en X:(%d) Y:(%d)", posicion->x, posicion->y);
 	if (posicionActual->x != posicion->x) {
@@ -188,7 +190,6 @@ void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socket
 			posicionActual->y--;
 		}
 	}
-	log_debug(logger, "El personaje se movio a X:(%d) Y:(%d)", posicionActual->x, posicionActual->y);
 	Posicion* posicionNueva = malloc(sizeof(Posicion));
 	posicionNueva->x = posicionActual->x;
 	posicionNueva->y = posicionActual->y;
@@ -196,6 +197,10 @@ void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socket
 	mensaje->PayLoadLength = sizeof(Posicion);
 	mensaje->Payload = posicionNueva;
 	enviarMensaje(socketNivel, mensaje);
+	recibirMensaje(socketNivel, &mensajeConfirmacion);
+	if (mensajeConfirmacion.PayloadDescriptor == MOVIMIENTO_EXITO){
+		log_debug(logger, "El personaje se movio a X:(%d) Y:(%d)", posicionActual->x, posicionActual->y);
+	}
 	free(mensaje);
 	free(posicionNueva);
 }

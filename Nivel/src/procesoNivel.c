@@ -80,7 +80,7 @@ t_list *estadoDePersonajes;
 #define RECURSOS_ASIGNADOS 10
 #define RECURSOS_NO_ASIGNADOS 11
 #define PERSONAJE_LIBERADO 15
-
+#define MOVIMIENTO_EXITO 12 //mensaje para informar del movimiento con exito
 // A recibir
 #define MUERTE_PERSONAJE 7
 #define REGISTRO_FAIL 0
@@ -222,6 +222,11 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 			break;
 		case AVISO_MOVIMIENTO:
 			realizarMovimiento(mensajeARecibir->Payload, personaje);
+			MPS_MSG mensajeConfirmacion;
+			mensajeConfirmacion.PayloadDescriptor = MOVIMIENTO_EXITO;
+			mensajeConfirmacion.PayLoadLength = sizeof(char);
+			mensajeConfirmacion.Payload = "0";
+			enviarMensaje(*socketConPersonaje, &mensajeConfirmacion);
 			break;
 		case PEDIR_RECURSO:
 			darRecurso(mensajeARecibir->Payload, personaje, socketConPersonaje);
@@ -399,7 +404,7 @@ void asignarRecursoAlPersonajeDeEstadoDePersonajes(char personajeSimbolo, char* 
 	}
 	Personaje* personajeAActualizar = list_find(estadoDePersonajes, (void*) esElPersonaje);
 	queue_push(personajeAActualizar->recursosObtenidos, recurso);
-	actualizarRecursosRecibidosAlPersonaje(personajeAActualizar,recurso);
+	actualizarRecursosRecibidosAlPersonaje(personajeAActualizar, recurso);
 }
 
 void actualizarRecursos(t_list* recAsignados) {
@@ -458,7 +463,7 @@ void actualizarRecursosRecibidosAlPersonaje(Personaje *personaje, char *recurso)
 	log_debug(logger, "El personaje (%s) tiene (%d) items asignados", pj->simbolo, list_size(pj->itemsAsignados));
 }
 
-t_queue* colaLiberacionDePersonajes_desserializer(t_stream *stream){
+t_queue* colaLiberacionDePersonajes_desserializer(t_stream *stream) {
 	t_queue *colaPersonajes = queue_create();
 	int offset = 0, tmp_size = 2;
 	PersonajeLiberado* personaje;
@@ -466,7 +471,7 @@ t_queue* colaLiberacionDePersonajes_desserializer(t_stream *stream){
 		personaje = malloc(sizeof(PersonajeLiberado));
 		memcpy(personaje, stream->data + offset, tmp_size);
 		queue_push(colaPersonajes, personaje);
-		offset+=tmp_size;
+		offset += tmp_size;
 	}
 	return colaPersonajes;
 }
