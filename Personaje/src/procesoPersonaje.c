@@ -56,9 +56,9 @@ int estaEnPosicionDeLaCaja(Posicion* posicion, Posicion* posicionActual);
 // Espera la confirmacion.
 void esperarConfirmacion(int socket);
 //encapsula toda la logica de pedir recurso
-int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar,int socketPlanificador, int socketOrquestador);
+int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, t_queue *objetosABuscar, int socketPlanificador, int socketOrquestador);
 //copia los objetos de la cola 1 a la cola 2;
-void copiarCola(t_queue *cola1,t_queue *cola2);
+void copiarCola(t_queue *cola1, t_queue *cola2);
 //le avisa al orquestador que el personaje termino con su plan de niveles
 void avisarFinalizacionDelPersonaje();
 //Globales
@@ -150,7 +150,7 @@ int consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensajeARecibir);
 	if (mensajeARecibir->PayloadDescriptor == CAJAFUERALIMITE) {
-		log_debug(logger, "El personaje %s no puede acceder a la caja (%c) porque esta fuera del limite", personaje->nombre,cajaABuscar);
+		log_debug(logger, "El personaje %s no puede acceder a la caja (%c) porque esta fuera del limite", personaje->nombre, cajaABuscar);
 		free(mensaje);
 		free(mensajeARecibir);
 		return 0;
@@ -198,7 +198,7 @@ void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socket
 	mensaje->Payload = posicionNueva;
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, &mensajeConfirmacion);
-	if (mensajeConfirmacion.PayloadDescriptor == MOVIMIENTO_EXITO){
+	if (mensajeConfirmacion.PayloadDescriptor == MOVIMIENTO_EXITO) {
 		log_debug(logger, "El personaje se movio a X:(%d) Y:(%d)", posicionActual->x, posicionActual->y);
 	}
 	free(mensaje);
@@ -263,8 +263,8 @@ void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestado
 	Nivel *nivel = queue_peek(personaje->listaNiveles);
 	Posicion* posicion = malloc(sizeof(Posicion));
 	Posicion* posicionActual = malloc(sizeof(Posicion));
-	t_queue *objetosABuscar=queue_create();
-	copiarCola(nivel->objetos,objetosABuscar);
+	t_queue *objetosABuscar = queue_create();
+	copiarCola(nivel->objetos, objetosABuscar);
 	posicionActual->x = 0;
 	posicionActual->y = 0;
 	notificarIngresoAlNivel(socketNivel);
@@ -308,17 +308,17 @@ void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestado
 	free(nivel);
 }
 
-void copiarCola(t_queue *cola1,t_queue *cola2){
+void copiarCola(t_queue *cola1, t_queue *cola2) {
 	int i;
 	char *objeto;
 	char *objetocopia;
-	int size=queue_size(cola1);
-	for(i=0;i<size;i++){
-		objeto=queue_pop(cola1);
-		objetocopia=malloc(sizeof(char)+1);
-		strcpy(objetocopia,objeto);
-		queue_push(cola2,objetocopia);
-		queue_push(cola1,objeto);
+	int size = queue_size(cola1);
+	for (i = 0; i < size; i++) {
+		objeto = queue_pop(cola1);
+		objetocopia = malloc(sizeof(char) + 1);
+		strcpy(objetocopia, objeto);
+		queue_push(cola2, objetocopia);
+		queue_push(cola1, objeto);
 	}
 }
 
@@ -335,21 +335,27 @@ void esperarDesbloqueo(int socketOrquestador) {
 		if (mensajeARecibir.PayloadDescriptor == DESBLOQUEAR) {
 			bloqueado = 0;
 		}
-		if (mensajeARecibir.PayloadDescriptor == MUERTE_PERSONAJE ){
-			perderVida(true);
+		if (mensajeARecibir.PayloadDescriptor == MUERTE_PERSONAJE) {
+			int resultado = perderVida(true);
+			if (resultado == 1) {
+				exit(EXIT_FAILURE);
+			}
+			exit(EXIT_SUCCESS);
 		}
 	}
 }
 
 int perderVida(bool porOrquestador) {
 	if (sacarVida(personaje) > 0) {
-		if(porOrquestador)
+		if (porOrquestador) {
 			log_debug(logger, "El personaje %s perdio una vida, causa:ORQUESTADOR", personaje->nombre);
-		else
+		} else {
 			log_debug(logger, "El personaje %s perdio una vida, causa:SIGTERM", personaje->nombre);
+		}
+
 		log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
 		liberarRecursos(socketNivel);
-		if(!porOrquestador){
+		if (!porOrquestador) {
 			log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
 			notificarMuerte(socketPlanificador);
 			esperarConfirmacionDelPlanificador(socketPlanificador);
@@ -385,7 +391,6 @@ int perderVida(bool porOrquestador) {
 int procesar() {
 
 	int resultado = recorrerNiveles();
-	log_debug(logger, "RESULTADO DE RECORRES NIVELES (%d)", resultado);
 	if (resultado == 1) {
 		return EXIT_FAILURE;
 	}
@@ -415,7 +420,7 @@ int recorrerNiveles() {
 		if (socketOrquestador == 1) {
 			return EXIT_FAILURE;
 		}
-		log_debug(logger, "Pidiendo el proximo nivel para realizar (%s)",verProximoNivel(personaje)->nombre);
+		log_debug(logger, "Pidiendo el proximo nivel para realizar (%s)", verProximoNivel(personaje)->nombre);
 		t_stream* stream = pedirNivel(personaje, socketOrquestador);
 		close(socketOrquestador);
 		if (stream->length == 0) {
@@ -499,7 +504,7 @@ int levantarPersonaje(char* path) {
 	return EXIT_SUCCESS;
 }
 
-int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel,t_queue *objetosABuscar, int socketPlanificador, int socketOrquestador) {
+int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, t_queue *objetosABuscar, int socketPlanificador, int socketOrquestador) {
 	int recursoAsignado;
 	log_debug(logger, "El personaje: (%s) pedira el recurso (%s) porque llego a la caja correspondiente.", personaje->nombre, cajaABuscar);
 	recursoAsignado = pedirRecurso(*cajaABuscar, socketNivel);
