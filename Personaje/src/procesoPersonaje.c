@@ -129,7 +129,6 @@ void enviarSeniales(){
 		perror ("sigaction");
 	}
 
-	sleep(5);
 	if(sigaction( SIGUSR1  , &act, NULL )==-1){
 		perror("sigaction");
 	}
