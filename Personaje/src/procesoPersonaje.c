@@ -103,6 +103,7 @@ int main(int argc, char *argv[]) {
 	if (levantarConfig == 1) {
 		return EXIT_FAILURE;
 	}
+
 	enviarSeniales();
 
 	int resultado = procesar();

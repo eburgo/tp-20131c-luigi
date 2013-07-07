@@ -153,6 +153,7 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case MUERTE_PERSONAJE:
 			log_debug(log, "El personaje (%s) murio. Lo sacamos del planificador.", personaje->simbolo);
+
 			sacarPersonaje(planificador, personaje, TRUE);
 			close(personaje->socket);
 			break;
