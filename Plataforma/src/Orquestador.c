@@ -263,7 +263,8 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 					personajeLiberado->simboloPersonaje = *personajeADesbloquear->simbolo;
 					queue_push(colaPersonajesLiberados, personajeLiberado);
 
-					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la listaListos", personajeADesbloquear->simbolo);
+					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la lista Listos", personajeADesbloquear->simbolo);
+					personajeADesbloquear->quantum = quantumDefault;
 					queue_push(planificadorNivel->listos, personajeADesbloquear);
 					list_remove(planificadorNivel->bloqueados, posicionPersonaje);
 					seDesbloqueoPersonaje = 1;
