@@ -311,8 +311,8 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			mensaje->Payload = pjAMatar->simbolo;
 			log_debug(loggerOrquestador, "Notificamos al Nivel (%s) que mataremos al personaje (%s)", nombreNivel, pjAMatar->simbolo);
 			enviarMensaje(socket, mensaje);
-			sacarPersonaje(dictionary_get(planificadores, nombreNivel), pjAMatar, FALSE);
-			log_debug(loggerOrquestador, "Se elimino con exito del Nivel (%s) al personaje (%s)", nombreNivel, pjAMatar->simbolo);
+			log_debug(loggerOrquestador, "Se notifico con exito al Nivel (%s) la muerte del personaje (%s)", nombreNivel, pjAMatar->simbolo);
+			sacarPersonaje(dictionary_get(planificadores, nombreNivel), pjAMatar, TRUE);
 			free(stream);
 			break;
 		default:

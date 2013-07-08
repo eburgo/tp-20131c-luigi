@@ -373,9 +373,9 @@ int perderVida(bool porOrquestador) {
 			log_debug(logger, "El personaje %s perdio una vida, causa:SIGTERM", personaje->nombre);
 		}
 
-		log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
-		liberarRecursos(socketNivel);
 		if (!porOrquestador) {
+			log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
+			liberarRecursos(socketNivel);
 			log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
 			notificarMuerte(socketPlanificador);
 			esperarConfirmacionDelPlanificador(socketPlanificador);
