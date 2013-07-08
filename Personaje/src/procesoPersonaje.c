@@ -115,21 +115,21 @@ int main(int argc, char *argv[]) {
 	return EXIT_SUCCESS;
 }
 
-void enviarSeniales(){
+void enviarSeniales() {
 
 	struct sigaction act;
 
-	memset (&act, '\0', sizeof(act));
+	memset(&act, '\0', sizeof(act));
 
 	act.sa_sigaction = &manejarSenial;
 
 	act.sa_flags = SA_NODEFER;
 
-	if (sigaction(SIGTERM, &act, NULL) < 0) {
-		perror ("sigaction");
+	if (sigaction(SIGTERM, &act, NULL ) < 0) {
+		perror("sigaction");
 	}
 
-	if(sigaction( SIGUSR1  , &act, NULL )==-1){
+	if (sigaction(SIGUSR1, &act, NULL ) == -1) {
 		perror("sigaction");
 	}
 
@@ -537,6 +537,11 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, t_
 		log_debug(logger, "El personaje: (%s) recibio el recurso(%s) con exito!", personaje->nombre, cajaABuscar);
 		if (queue_is_empty(objetosABuscar)) {
 			log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
+			MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+			mensajeAEnviar->PayloadDescriptor = FINALIZAR;
+			mensajeAEnviar->PayLoadLength = sizeof(char);
+			mensajeAEnviar->Payload = "4";
+			enviarMensaje(socketPlanificador, mensajeAEnviar);
 			close(socketPlanificador);
 		} else {
 			recursoObtenido(socketPlanificador);

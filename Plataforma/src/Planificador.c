@@ -141,7 +141,7 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case FINALIZADO:
 			log_debug(log, "el personaje (%s) finalizo el nivel", personaje->simbolo);
-			sacarPersonaje(planificador, personaje, TRUE);
+			sacarPersonaje(planificador, personaje, FALSE);
 			close(personaje->socket);
 			break;
 		case OBTUVO_RECURSO:
@@ -153,7 +153,7 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case MUERTE_PERSONAJE:
 			log_debug(log, "El personaje (%s) murio. Lo sacamos del planificador.", personaje->simbolo);
-			sacarPersonaje(planificador, personaje, FALSE);
+			sacarPersonaje(planificador, personaje, TRUE);
 			close(personaje->socket);
 			break;
 		case MOVIMIENTO_FINALIZADO:
@@ -197,7 +197,7 @@ int notificarMuerte(Personaje* personaje) {
 	return 0;
 }
 
-void sacarPersonaje(Planificador *planificador, Personaje *personaje, int terminoElNivel) {
+void sacarPersonaje(Planificador *planificador, Personaje *personaje, int leRespondoAlPersonaje) {
 	int esElPersonaje(Personaje *pj) {
 		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
 	}
@@ -208,7 +208,7 @@ void sacarPersonaje(Planificador *planificador, Personaje *personaje, int termin
 	}
 	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
 	FD_CLR(pj->socket, planificador->set);
-	if (terminoElNivel) {
+	if (leRespondoAlPersonaje) {
 		notificarMuerte(pj);
 	}
 	free(pj);
