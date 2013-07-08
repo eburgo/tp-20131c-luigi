@@ -274,9 +274,7 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	ITEM_NIVEL* caja = buscarCaja(recurso);
 	log_debug(logger, "El personaje (%s) pide un recurso (%c)", personaje->simbolo, caja->id);
 	if (caja->quantity == 0) {
-		mensaje->PayloadDescriptor = SIN_RECURSOS;
-		mensaje->PayLoadLength = 2;
-		mensaje->Payload = "0";
+		armarMensaje(mensaje,SIN_RECURSOS,2,"0");
 		enviarMensaje(*socketPersonaje, mensaje);
 		free(mensaje);
 		log_debug(logger, "No hay recursos (%c) para otorgarle al personaje (%s)", caja->id, personaje->simbolo);
@@ -295,9 +293,7 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	restarRecurso(itemsEnNivel, caja->id);
 	log_debug(logger, "Al personaje (%s) se le dio el recurso (%c) del que ahora quedan(%d)", personaje->simbolo, caja->id, caja->quantity);
 	pthread_mutex_unlock(&semaforoListaNiveles);
-	mensaje->PayloadDescriptor = HAY_RECURSOS;
-	mensaje->PayLoadLength = sizeof(char);
-	mensaje->Payload = "0";
+	armarMensaje(mensaje,HAY_RECURSOS,sizeof(char),"0");
 	pthread_mutex_lock(&semaforoEstadoPersonajes);
 	queue_push(personaje->recursosObtenidos, string_substring_until(&caja->id, 1));
 	actualizarRecursosRecibidosAlPersonaje(personaje, recurso);

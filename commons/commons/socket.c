@@ -302,3 +302,9 @@ t_stream* NivelRecursosLiberados_serializer(t_list *recursos) {
 		stream->data = data;
 		return stream;
 }
+
+void armarMensaje(MPS_MSG* mensaje,int descriptor,int payloadLength,void* payload){
+	mensaje->PayloadDescriptor=descriptor;
+	mensaje->PayLoadLength = payloadLength;
+	mensaje->Payload = payload;
+}

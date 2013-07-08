@@ -111,9 +111,7 @@ void manejarConexion(int* socket) {
 			break;
 		}
 		t_stream *stream = nivelConexion_serializer(nivel);
-		mensaje.PayloadDescriptor = PJ_PIDE_NIVEL;
-		mensaje.PayLoadLength = stream->length;
-		mensaje.Payload = stream->data;
+		armarMensaje(&mensaje,PJ_PIDE_NIVEL,stream->length,stream->data);
 		log_error(loggerOrquestador, "Socket (%d) - Enviando mensaje con info del nivel solicitado", *socket);
 		enviarMensaje(*socket, &mensaje);
 		log_error(loggerOrquestador, "Socket (%d) - Info enviada con exito", *socket);
@@ -273,22 +271,16 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			if (seDesbloqueoPersonaje == 0) {
 				log_debug(loggerOrquestador, "No se encontraron personajes para desbloquear con los recursos liberados por el nivel (%s)", nombreNivel);
 				MPS_MSG mensajeNoPersonajesParaLiberar;
-				mensajeNoPersonajesParaLiberar.PayloadDescriptor = SIN_PERSONAJES_PARA_LIBERAR;
-				mensajeNoPersonajesParaLiberar.PayLoadLength = sizeof(char);
-				mensajeNoPersonajesParaLiberar.Payload = "0";
+				armarMensaje(&mensajeNoPersonajesParaLiberar,SIN_PERSONAJES_PARA_LIBERAR,sizeof(char),"0");
 				enviarMensaje(socket, &mensajeNoPersonajesParaLiberar);
 			} else if (seDesbloqueoPersonaje == 1) {
 				MPS_MSG mensajeLiberacionPersonaje;
 				t_stream* stream = colaPersonajesLiberados_serializer(colaPersonajesLiberados);
-				mensajeLiberacionPersonaje.PayloadDescriptor = PERSONAJE_LIBERADO;
-				mensajeLiberacionPersonaje.PayLoadLength = stream->length;
-				mensajeLiberacionPersonaje.Payload = stream->data;
+				armarMensaje(&mensajeLiberacionPersonaje,PERSONAJE_LIBERADO,stream->length,stream->data);
 				enviarMensaje(socket, &mensajeLiberacionPersonaje);
 
 				MPS_MSG mensajeDeDesbloqueo;
-				mensajeDeDesbloqueo.PayloadDescriptor = DESBLOQUEAR;
-				mensajeDeDesbloqueo.PayLoadLength = sizeof(char);
-				mensajeDeDesbloqueo.Payload = "0";
+				armarMensaje(&mensajeDeDesbloqueo,DESBLOQUEAR,sizeof(char),"0");
 				PersonajeDesbloqueado* personajeDesbloqueado;
 
 				while (!queue_is_empty(colaPersonajesADesbloquear)) {
@@ -307,9 +299,7 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			stream->length = mensaje->PayLoadLength;
 			t_list *pjsEnDeadlock = pjsEnDeadlock_desserializer(stream);
 			Personaje *pjAMatar = (Personaje*) buscarPjAMatar(nombreNivel, pjsEnDeadlock);
-			mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
-			mensaje->PayLoadLength = strlen(pjAMatar->simbolo) + 1;
-			mensaje->Payload = pjAMatar->simbolo;
+			armarMensaje(mensaje,CHEQUEO_INTERBLOQUEO,strlen(pjAMatar->simbolo)+1,pjAMatar->simbolo);
 			log_debug(loggerOrquestador, "Notificamos al Nivel (%s) que mataremos al personaje (%s)", nombreNivel, pjAMatar->simbolo);
 			enviarMensaje(socket, mensaje);
 			log_debug(loggerOrquestador, "Se notifico con exito al Nivel (%s) la muerte del personaje (%s)", nombreNivel, pjAMatar->simbolo);

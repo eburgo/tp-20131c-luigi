@@ -154,9 +154,7 @@ void manejarSenial(int sig, siginfo_t *siginfo, void *context) {
 
 void notificarIngresoAlNivel(int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	mensaje->PayloadDescriptor = INGRESA_NIVEL;
-	mensaje->PayLoadLength = sizeof(char);
-	mensaje->Payload = personaje->simbolo;
+	armarMensaje(mensaje,INGRESA_NIVEL,sizeof(char),personaje->simbolo);
 	enviarMensaje(socketNivel, mensaje);
 	free(mensaje);
 }
@@ -164,9 +162,7 @@ void notificarIngresoAlNivel(int socketNivel) {
 int consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
-	mensaje->PayloadDescriptor = UBICACION_CAJA;
-	mensaje->PayLoadLength = sizeof(char);
-	mensaje->Payload = &cajaABuscar;
+	armarMensaje(mensaje,UBICACION_CAJA,sizeof(char),&cajaABuscar);
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensajeARecibir);
 	if (mensajeARecibir->PayloadDescriptor == CAJAFUERALIMITE) {
@@ -213,9 +209,7 @@ void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socket
 	Posicion* posicionNueva = malloc(sizeof(Posicion));
 	posicionNueva->x = posicionActual->x;
 	posicionNueva->y = posicionActual->y;
-	mensaje->PayloadDescriptor = AVISO_MOVIMIENTO;
-	mensaje->PayLoadLength = sizeof(Posicion);
-	mensaje->Payload = posicionNueva;
+	armarMensaje(mensaje,AVISO_MOVIMIENTO,sizeof(Posicion),posicionNueva);
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, &mensajeConfirmacion);
 	if (mensajeConfirmacion.PayloadDescriptor == MOVIMIENTO_EXITO) {
@@ -228,9 +222,7 @@ void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socket
 void movimientoRealizado(int socketPlanificador) {
 	log_debug(logger, "El personaje:(%s) procede a avisarle al planificador de su movimiento", personaje->nombre);
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	mensaje->PayloadDescriptor = AVISO_MOVIMIENTO;
-	mensaje->PayLoadLength = sizeof(char);
-	mensaje->Payload = "3";
+	armarMensaje(mensaje,AVISO_MOVIMIENTO,sizeof(char),"3");
 	enviarMensaje(socketPlanificador, mensaje);
 	free(mensaje);
 }
@@ -238,18 +230,14 @@ void movimientoRealizado(int socketPlanificador) {
 void recursoObtenido(int socketPlanificador) {
 	log_debug(logger, "El personaje:(%s) procede a avisarle al planificador que obtuvo un recurso", personaje->nombre);
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	mensaje->PayloadDescriptor = OBTUVO_RECURSO;
-	mensaje->PayLoadLength = sizeof(char);
-	mensaje->Payload = "6";
+	armarMensaje(mensaje,OBTUVO_RECURSO,sizeof(char),"6");
 	enviarMensaje(socketPlanificador, mensaje);
 	free(mensaje);
 }
 
 int pedirRecurso(char recursoAPedir, int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	mensaje->PayloadDescriptor = PEDIR_RECURSO;
-	mensaje->PayLoadLength = sizeof(char);
-	mensaje->Payload = &recursoAPedir;
+	armarMensaje(mensaje,PEDIR_RECURSO,sizeof(char),&recursoAPedir);
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensaje);
 	if (mensaje->PayloadDescriptor == SIN_RECURSOS) {
