@@ -38,9 +38,7 @@ void detectarInterbloqueos() {
 			personajesFiltrados = (t_list*) list_filter(estadoDePersonajes, (void*) necesitaRecursos);
 			if (list_size(personajesFiltrados) > 1) {
 				log_debug(logger, "HILO DE INTERBLOQUEOS: se van a simularEntregas, tenemos (%d) personajes.", list_size(personajesFiltrados));
-				log_debug(logger, "<----- ROGELIO recurso h(%d)---->", buscarCajaAux(nivel->items, "H")->quantity);
 				simularEntregas(estadoDePersonajes);
-				log_debug(logger, "<----- ROGELIO recurso h(%d)---->", buscarCajaAux(nivel->items, "H")->quantity);
 			} else {
 				log_debug(logger, "HILO DE INTERBLOQUEOS:Hay (%d) personajes que necesitan recursos, se necesitan al menos 2.", list_size(personajesFiltrados));
 			}
@@ -138,7 +136,6 @@ void simularEntregas(t_list *procesosPersonajes) {
 			log_debug(logger, "HILO DE INTERBLOQUEOS: El orquestador mato al pj (%s)", pjSimbolo);
 			Personaje *pj = buscarPersonaje(estadoDePersonajes, pjSimbolo);
 			log_debug(logger, "HILO DE INTERBLOQUEOS: vamos a liberar recursos para el pj (%s)", pj->simbolo);
-			log_debug(logger, "HILO DE INTERBLOQUEOS: tamaño de la cola del pj (%s): %d", pj->simbolo, queue_size(pj->recursosObtenidos));
 			liberarRecursos(pj, socketOrquestador);
 
 		} else {
@@ -188,7 +185,7 @@ t_stream* pjsEnDeadlock_serializer(t_list *pjsEnDeadlock) {
 	for (i = 0; i < list_size(pjsEnDeadlock); i++) {
 		Personaje *pj;
 		pj = list_get(pjsEnDeadlock, i);
-		log_debug(logger, "Serializando.... simbolo de pj : %s \n", pj->simbolo);
+		log_debug(logger, "Personaje en Deadlock a enviar (%s)", pj->simbolo);
 		memcpy(data + offset, pj->simbolo, tmp_size = strlen(pj->simbolo) + 1);
 		offset += tmp_size;
 	}

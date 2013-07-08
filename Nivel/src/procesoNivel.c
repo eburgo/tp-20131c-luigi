@@ -81,6 +81,7 @@ t_list *estadoDePersonajes;
 #define RECURSOS_NO_ASIGNADOS 11
 #define PERSONAJE_LIBERADO 15
 #define MOVIMIENTO_EXITO 12 //mensaje para informar del movimiento con exito
+#define MUERTE_POR_DEADLOCK 13 // Mensaje por si muere por deadlock
 // A recibir
 #define MUERTE_PERSONAJE 7
 #define REGISTRO_FAIL 0
@@ -239,6 +240,10 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 		case FINALIZAR:
 			log_debug(logger, "El personaje (%s) termino el nivel satisfactoriamente, se procede a liberar recursos.", personaje->simbolo);
 			liberarRecursos(personaje, socketOrquestador);
+			terminoElNivel = 1;
+			break;
+		case MUERTE_POR_DEADLOCK:
+			log_debug(logger, "El personaje (%s) nos notifica que lo mataron por estar en deadlock", personaje->simbolo);
 			terminoElNivel = 1;
 			break;
 		default:
