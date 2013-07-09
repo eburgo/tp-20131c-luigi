@@ -297,7 +297,7 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			stream->length = mensaje->PayLoadLength;
 			t_list *pjsEnDeadlock = pjsEnDeadlock_desserializer(stream);
 			Personaje *pjAMatar = (Personaje*) buscarPjAMatar(nombreNivel, pjsEnDeadlock);
-			armarMensaje(mensaje,CHEQUEO_INTERBLOQUEO,strlen(pjAMatar->simbolo)+1,pjAMatar->simbolo);
+			armarMensaje(mensaje,CHEQUEO_INTERBLOQUEO,sizeof(char),pjAMatar->simbolo);
 			log_debug(loggerOrquestador, "Notificamos al Nivel (%s) que mataremos al personaje (%s)", nombreNivel, pjAMatar->simbolo);
 			enviarMensaje(socket, mensaje);
 			log_debug(loggerOrquestador, "Se notifico con exito al Nivel (%s) la muerte del personaje (%s)", nombreNivel, pjAMatar->simbolo);
