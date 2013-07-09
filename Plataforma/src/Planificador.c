@@ -22,6 +22,7 @@
 #define FINALIZADO 4
 #define OBTUVO_RECURSO 6
 #define MUERTE_PERSONAJE 7
+#define INGRESA_NIVEL 9
 
 int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
@@ -56,37 +57,39 @@ int recibirPersonajes(Planificador *planificador) {
 	char nombreOrigen[16] = "PLANIFICADOR - ";
 	char* nombreLog = strcat(nombreOrigen, planificador->nombreNivel);
 	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true, LOG_LEVEL_TRACE);
+	log_debug(log, "Se procede a escuchar conexiones de personajes en el planificador (%s)", planificador->nombreNivel);
 	while (1) {
 		socketNuevaConexion = malloc(sizeof(int));
-		log_debug(log, "Se procede a escuchar conexiones de personajes en el planificador (%s) en el socket (%d)", planificador->nombreNivel, planificador->socketEscucha);
 		if ((*socketNuevaConexion = accept(planificador->socketEscucha, NULL, 0)) < 0) {
 			log_error(log, "Error al aceptar una conexión.");
 			return EXIT_FAILURE;
 		}
 		mensaje = malloc(sizeof(MPS_MSG));
 		recibirMensaje(*socketNuevaConexion, mensaje);
-		log_debug(log, "El personaje (%s) entro al nivel", (char*) mensaje->Payload);
+		if(mensaje->PayloadDescriptor != INGRESA_NIVEL) {
+			log_error(log, "El personaje que acaba de entrar envio un mensaje con descriptor incorrecto: (%d)", mensaje->PayloadDescriptor);
+		}
 
-		// Agrega los personajes que estan ejecutandose
+		// Agrega los personajes que estan ejecutandose en todos los niveles, para que el orquestador
+		// sepa cuando ejecutar Koopa.
 		if ((buscarSimboloPersonaje(personajes, mensaje->Payload)) == -1) {
 			list_add(personajes, mensaje->Payload);
 		}
-		// ............................................
 
 		Personaje *personaje = malloc(sizeof(Personaje));
 		personaje->simbolo = (char*) mensaje->Payload;
 		personaje->quantum = quantumDefault;
 		personaje->socket = *socketNuevaConexion;
 
-		log_debug(log, "El personaje (%s) se encolara a la cola de listos", personaje->simbolo);
+		log_debug(log, "El personaje (%s) entro al nivel y se encolara a la cola de listos", personaje->simbolo);
 		pthread_mutex_lock(&semaforo_listos);
 		list_add(planificador->personajes, personaje);
 		queue_push(planificador->listos, personaje);
 		FD_SET(*socketNuevaConexion, planificador->set);
 		pthread_mutex_unlock(&semaforo_listos);
 		imprimirListas(planificador, log);
+		enviarMensaje(personaje->socket, mensaje);
 		sem_post(planificador->sem);
-		enviarMensaje(personaje->socket, mensaje); //para confirmarle q inicializo bien;
 		free(socketNuevaConexion);
 		free(mensaje);
 	}
