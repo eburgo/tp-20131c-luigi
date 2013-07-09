@@ -187,7 +187,8 @@ int esperarConfirmacionDelPlanificador(int socketPlanificador) {
 		return 1;
 	}
 	free(mensaje);
-	return 0;
+	log_error(logger, "Se recibio un mensaje del planificador inesperado. Personaje (%s)", personaje->nombre);
+	exit(EXIT_FAILURE);
 }
 void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));

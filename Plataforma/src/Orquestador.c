@@ -165,19 +165,16 @@ int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion) {
 
 	Nivel *nivel = malloc(sizeof(Nivel));
 	Planificador *planificador = malloc(sizeof(Planificador));
-	log_debug(loggerOrquestador, "Se busca el nivel (%s)", nombre);
 	pthread_mutex_lock(&semaforo_niveles);
 	nivel = (Nivel*) dictionary_get(niveles, nombre);
 	pthread_mutex_unlock(&semaforo_niveles);
 	if (nivel == NULL )
 		return -1;
-	log_debug(loggerOrquestador, "Se busca el planificador (%s)", nombre);
 	pthread_mutex_lock(&semaforo_planificadores);
 	planificador = (Planificador*) dictionary_get(planificadores, nombre);
 	pthread_mutex_unlock(&semaforo_planificadores);
 	if (planificador == NULL )
 		return -2;
-	log_debug(loggerOrquestador, "Se va a armar la struct de NivelConexion con los datos del nivel (%s)", nombre);
 	armarNivelConexion(nivelConexion, nivel, planificador);
 	return 0;
 }

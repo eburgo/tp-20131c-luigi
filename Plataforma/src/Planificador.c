@@ -27,7 +27,7 @@ int recibirPersonajes(Planificador *planificador);
 int manejarPersonajes(Planificador *planificador);
 int notificarMovimientoPermitido(Personaje *personaje);
 void imprimirListas(Planificador *planificador, t_log *log);
-void imprimirLista(char* header, t_list* lista, t_log *log,int desde);
+char* imprimirLista(char* header, t_list* lista, t_log *log, int desde);
 //Globales
 extern int quantumDefault;
 extern int tiempoAccion;
@@ -84,7 +84,7 @@ int recibirPersonajes(Planificador *planificador) {
 		queue_push(planificador->listos, personaje);
 		FD_SET(*socketNuevaConexion, planificador->set);
 		pthread_mutex_unlock(&semaforo_listos);
-		imprimirListas(planificador,log);
+		imprimirListas(planificador, log);
 		sem_post(planificador->sem);
 		enviarMensaje(personaje->socket, mensaje); //para confirmarle q inicializo bien;
 		free(socketNuevaConexion);
@@ -106,7 +106,7 @@ int manejarPersonajes(Planificador *planificador) {
 		log_debug(log, "Esperando personajes");
 		sem_wait(planificador->sem);
 		Personaje *personaje = queue_peek(planificador->listos);
-		imprimirListas(planificador,log);
+		imprimirListas(planificador, log);
 		log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 		notificarMovimientoPermitido(personaje);
 		readSet = *planificador->set;
@@ -137,12 +137,12 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_pop(planificador->listos);
 			personaje->causaBloqueo = (char*) mensaje->Payload;
 			list_add(planificador->bloqueados, personaje);
-			imprimirListas(planificador,log);
+			imprimirListas(planificador, log);
 			break;
 		case FINALIZADO:
 			log_debug(log, "el personaje (%s) finalizo el nivel", personaje->simbolo);
 			sacarPersonaje(planificador, personaje, FALSE);
-			imprimirListas(planificador,log);
+			imprimirListas(planificador, log);
 			close(personaje->socket);
 			break;
 		case OBTUVO_RECURSO:
@@ -155,7 +155,7 @@ int manejarPersonajes(Planificador *planificador) {
 		case MUERTE_PERSONAJE:
 			log_debug(log, "El personaje (%s) murio. Lo sacamos del planificador.", personaje->simbolo);
 			sacarPersonaje(planificador, personaje, TRUE);
-			imprimirListas(planificador,log);
+			imprimirListas(planificador, log);
 			close(personaje->socket);
 			break;
 		case MOVIMIENTO_FINALIZADO:
@@ -163,13 +163,13 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
-			imprimirListas(planificador,log);
+			imprimirListas(planificador, log);
 			sem_post(planificador->sem);
 			break;
 		default:
 			log_debug(log, "El personaje (%s) envio un mensaje no esperado, se cierra la conexion.", personaje->simbolo);
 			sacarPersonaje(planificador, personaje, FALSE);
-			imprimirListas(planificador,log);
+			imprimirListas(planificador, log);
 			close(personaje->socket);
 			break;
 		}
@@ -238,22 +238,23 @@ int buscarSimboloPersonaje(t_list *self, char* nombrePersonaje) {
 	else
 		return -1;
 }
-void imprimirListas(Planificador *planificador, t_log *log){
-	log_info(log, "----------- LISTAS -----------");
-	if(!queue_is_empty(planificador->listos))
-		log_info(log, "Ejecutando:->%s", ((Personaje*)queue_peek(planificador->listos))->simbolo);
-	imprimirLista("Listos:",planificador->listos->elements,log,1);
-	imprimirLista("Bloqueados:",planificador->bloqueados,log,0);
-	log_info(log, "------------------------------");
+void imprimirListas(Planificador *planificador, t_log *log) {
+	char* listosLog = imprimirLista("Listos:", planificador->listos->elements, log, 1);
+	char* bloqueadosLog = imprimirLista("Bloqueados:", planificador->bloqueados, log, 0);
+	if (!queue_is_empty(planificador->listos)) {
+		log_debug(log, "Ejecutando:->%s / %s / %s", ((Personaje*) queue_peek(planificador->listos))->simbolo, listosLog, bloqueadosLog);
+	} else {
+		log_debug(log, "%s / % s", listosLog, bloqueadosLog);
+	}
+
 }
-void imprimirLista(char* header, t_list* lista, t_log *log,int indice){
+char* imprimirLista(char* header, t_list* lista, t_log *log, int indice) {
 	char *listaLog = string_new();
 	string_append(&listaLog, header);
-	for(;indice<list_size(lista);indice++){
-		string_append(&listaLog,"-> ");
-		string_append(&listaLog,string_duplicate(((Personaje*)list_get(lista,indice))->simbolo));
+	for (; indice < list_size(lista); indice++) {
+		string_append(&listaLog, "-> ");
+		string_append(&listaLog, string_duplicate(((Personaje*) list_get(lista, indice))->simbolo));
 	}
-	string_append(&listaLog,".");
-	log_info(log, listaLog);
-	free(listaLog);
+	string_append(&listaLog, ".");
+	return listaLog;
 }
