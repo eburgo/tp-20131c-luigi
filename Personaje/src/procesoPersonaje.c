@@ -85,6 +85,7 @@ int socketNivel;
 #define CAJAFUERALIMITE 8 // mensaje q recibe en la consulta de la ubicacion de una caja si la misma esta fuera del limite
 #define FINALIZO_NIVELES 20 // Notifica que el personaje termino el plan de niveles
 #define MOVIMIENTO_EXITO 12 // MEnsaje del nivel por si el movimiento se dio con exito
+#define MUERTE_POR_DEADLOCK 13 // Mensaje por si muere por deadlock
 int main(int argc, char *argv[]) {
 
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
@@ -154,7 +155,7 @@ void manejarSenial(int sig, siginfo_t *siginfo, void *context) {
 
 void notificarIngresoAlNivel(int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	armarMensaje(mensaje,INGRESA_NIVEL,sizeof(char),personaje->simbolo);
+	armarMensaje(mensaje, INGRESA_NIVEL, sizeof(char), personaje->simbolo);
 	enviarMensaje(socketNivel, mensaje);
 	free(mensaje);
 }
@@ -162,7 +163,7 @@ void notificarIngresoAlNivel(int socketNivel) {
 int consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
-	armarMensaje(mensaje,UBICACION_CAJA,sizeof(char),&cajaABuscar);
+	armarMensaje(mensaje, UBICACION_CAJA, sizeof(char), &cajaABuscar);
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensajeARecibir);
 	if (mensajeARecibir->PayloadDescriptor == CAJAFUERALIMITE) {
@@ -209,7 +210,7 @@ void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socket
 	Posicion* posicionNueva = malloc(sizeof(Posicion));
 	posicionNueva->x = posicionActual->x;
 	posicionNueva->y = posicionActual->y;
-	armarMensaje(mensaje,AVISO_MOVIMIENTO,sizeof(Posicion),posicionNueva);
+	armarMensaje(mensaje, AVISO_MOVIMIENTO, sizeof(Posicion), posicionNueva);
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, &mensajeConfirmacion);
 	if (mensajeConfirmacion.PayloadDescriptor == MOVIMIENTO_EXITO) {
@@ -222,7 +223,7 @@ void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socket
 void movimientoRealizado(int socketPlanificador) {
 	log_debug(logger, "El personaje:(%s) procede a avisarle al planificador de su movimiento", personaje->nombre);
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	armarMensaje(mensaje,AVISO_MOVIMIENTO,sizeof(char),"3");
+	armarMensaje(mensaje, AVISO_MOVIMIENTO, sizeof(char), "3");
 	enviarMensaje(socketPlanificador, mensaje);
 	free(mensaje);
 }
@@ -230,14 +231,14 @@ void movimientoRealizado(int socketPlanificador) {
 void recursoObtenido(int socketPlanificador) {
 	log_debug(logger, "El personaje:(%s) procede a avisarle al planificador que obtuvo un recurso", personaje->nombre);
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	armarMensaje(mensaje,OBTUVO_RECURSO,sizeof(char),"6");
+	armarMensaje(mensaje, OBTUVO_RECURSO, sizeof(char), "6");
 	enviarMensaje(socketPlanificador, mensaje);
 	free(mensaje);
 }
 
 int pedirRecurso(char recursoAPedir, int socketNivel) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
-	armarMensaje(mensaje,PEDIR_RECURSO,sizeof(char),&recursoAPedir);
+	armarMensaje(mensaje, PEDIR_RECURSO, sizeof(char), &recursoAPedir);
 	enviarMensaje(socketNivel, mensaje);
 	recibirMensaje(socketNivel, mensaje);
 	if (mensaje->PayloadDescriptor == SIN_RECURSOS) {
@@ -353,20 +354,27 @@ void esperarDesbloqueo(int socketOrquestador) {
 	}
 }
 
-int perderVida(bool porOrquestador) {
+int perderVida(bool porDeadlock) {
 	if (sacarVida(personaje) > 0) {
-		if (porOrquestador) {
-			log_debug(logger, "El personaje %s perdio una vida, causa:ORQUESTADOR", personaje->nombre);
+		if (porDeadlock) {
+			log_debug(logger, "El personaje %s perdio una vida, causa:DEADLOCK", personaje->nombre);
 		} else {
 			log_debug(logger, "El personaje %s perdio una vida, causa:SIGTERM", personaje->nombre);
 		}
 
-		if (!porOrquestador) {
+		if (!porDeadlock) {
 			log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
 			liberarRecursos(socketNivel);
 			log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
 			notificarMuerte(socketPlanificador);
 			esperarConfirmacionDelPlanificador(socketPlanificador);
+		} else if (porDeadlock) {
+			MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+			mensajeAEnviar->PayloadDescriptor = MUERTE_POR_DEADLOCK;
+			mensajeAEnviar->PayLoadLength = sizeof(char);
+			mensajeAEnviar->Payload = personaje->simbolo;
+			enviarMensaje(socketNivel, mensajeAEnviar);
+			free(mensajeAEnviar);
 		}
 		close(socketPlanificador);
 		close(socketNivel);
