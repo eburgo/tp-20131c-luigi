@@ -31,7 +31,7 @@ void imprimirListas(Planificador *planificador, t_log *log);
 char* imprimirLista(char* header, t_list* lista, t_log *log, int desde);
 //Globales
 extern int quantumDefault;
-extern int tiempoAccion;
+extern unsigned long tiempoAccion;
 extern t_log* loggerOrquestador;
 
 sem_t sem_test;
@@ -126,7 +126,7 @@ int manejarPersonajes(Planificador *planificador) {
 		log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
 		while (personaje->quantum > 1 && mensaje->PayloadDescriptor == MOVIMIENTO_FINALIZADO) {
 			personaje->quantum--;
-			sleep(tiempoAccion);
+			usleep(tiempoAccion);
 			log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 			notificarMovimientoPermitido(personaje);
 			free(mensaje);
@@ -177,7 +177,7 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		}
 		free(mensaje);
-		sleep(tiempoAccion);
+		usleep(tiempoAccion);
 	}
 	log_destroy(log);
 	return 0;

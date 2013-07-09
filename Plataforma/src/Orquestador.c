@@ -25,7 +25,7 @@ t_dictionary *niveles;
 t_log* loggerOrquestador;
 t_list* personajes;
 int quantumDefault = 2;
-int tiempoAccion = 2;
+unsigned long tiempoAccion = 2;
 //Tipos de mensajes a enviar
 #define DESBLOQUEAR 5
 #define RECURSOS_ASIGNADOS 10
@@ -207,9 +207,10 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	return 0;
 }
 
-void levantarConfiguracion(char* path, int *quantum, int *tiempoAccion) {
+void levantarConfiguracion(char* path, int *quantum, unsigned long *tiempoAccion) {
 	t_config *config = config_create(path);
-	*tiempoAccion = atoi(config_get_string_value(config, "tiempoAccion"));
+	char** spliteo = string_split(config_get_string_value(config, "tiempoAccion"),".");
+	*tiempoAccion=atoi(spliteo[0])*1000000+atoi(spliteo[1])*100000;
 	*quantum = atoi(config_get_string_value(config, "quantum"));
 	config_destroy(config);
 }

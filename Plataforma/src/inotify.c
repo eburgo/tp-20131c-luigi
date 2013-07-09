@@ -21,7 +21,7 @@
 #define BUF_LEN     ( 1024 * EVENT_SIZE )
 
 extern int quantumDefault;
-extern int tiempoAccion;
+extern unsigned long tiempoAccion;
 extern t_log* loggerOrquestador;
 char*path = "/home/utnso/git/tp-20131c-luigi/Plataforma";
 int inotify() {
