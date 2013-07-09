@@ -83,9 +83,6 @@ void simularEntregas(t_list *procesosPersonajes) {
 	for (; i < list_size(auxPersonajes);) {
 
 		Personaje *pj = list_get(auxPersonajes, i);
-		Personaje *pj2 = list_get(procesosPersonajes, i);
-
-		log_debug(logger, "ROGELIO (%d) (%d)", list_size(pj->itemsAsignados),list_size(pj2->itemsAsignados));
 
 		log_debug(logger, "HILO DE INTERBLOQUEOS:obtenemos el primer pj (%s)", pj->simbolo);
 
@@ -133,11 +130,7 @@ void simularEntregas(t_list *procesosPersonajes) {
 			enviarMensaje(socketOrquestador, mensaje);
 			recibirMensaje(socketOrquestador, mensaje);
 			char* pjSimbolo = mensaje->Payload;
-			log_debug(logger, "HILO DE INTERBLOQUEOS: El orquestador mato al pj (%s)", pjSimbolo);
-			Personaje *pj = buscarPersonaje(estadoDePersonajes, pjSimbolo);
-			log_debug(logger, "HILO DE INTERBLOQUEOS: vamos a liberar recursos para el pj (%s)", pj->simbolo);
-			liberarRecursos(pj, socketOrquestador);
-
+			log_debug(logger, "HILO DE INTERBLOQUEOS: El orquestador mato al pj (%s) a causa del deadlock", pjSimbolo);
 		} else {
 			log_debug(logger, "HILO DE INTERBLOQUEOS: Recovery no activado");
 		}

@@ -82,6 +82,8 @@ t_list *estadoDePersonajes;
 #define PERSONAJE_LIBERADO 15
 #define MOVIMIENTO_EXITO 12 //mensaje para informar del movimiento con exito
 #define MUERTE_POR_DEADLOCK 13 // Mensaje por si muere por deadlock
+#define MUERTE_CORRECTA 19
+
 // A recibir
 #define MUERTE_PERSONAJE 7
 #define REGISTRO_FAIL 0
@@ -235,6 +237,11 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 		case MUERTE_PERSONAJE:
 			log_debug(logger, "El personaje ( %s ) murio, se procede a liberar recursos.", personaje->simbolo);
 			liberarRecursos(personaje, socketOrquestador);
+			MPS_MSG mensajeLiberadoOk;
+			mensajeLiberadoOk.PayloadDescriptor = MUERTE_CORRECTA;
+			mensajeLiberadoOk.PayLoadLength = sizeof(char);
+			mensajeLiberadoOk.Payload = "0";
+			enviarMensaje(*socketConPersonaje, &mensajeLiberadoOk);
 			terminoElNivel = 1;
 			break;
 		case FINALIZAR:
@@ -244,6 +251,12 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 			break;
 		case MUERTE_POR_DEADLOCK:
 			log_debug(logger, "El personaje (%s) nos notifica que lo mataron por estar en deadlock", personaje->simbolo);
+			liberarRecursos(personaje, socketOrquestador);
+			MPS_MSG mensajeLiberadoOkDeadlock;
+			mensajeLiberadoOkDeadlock.PayloadDescriptor = MUERTE_CORRECTA;
+			mensajeLiberadoOkDeadlock.PayLoadLength = sizeof(char);
+			mensajeLiberadoOkDeadlock.Payload = "0";
+			enviarMensaje(*socketConPersonaje, &mensajeLiberadoOkDeadlock);
 			terminoElNivel = 1;
 			break;
 		default:
@@ -274,7 +287,7 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	ITEM_NIVEL* caja = buscarCaja(recurso);
 	log_debug(logger, "El personaje (%s) pide un recurso (%c)", personaje->simbolo, caja->id);
 	if (caja->quantity == 0) {
-		armarMensaje(mensaje,SIN_RECURSOS,2,"0");
+		armarMensaje(mensaje, SIN_RECURSOS, 2, "0");
 		enviarMensaje(*socketPersonaje, mensaje);
 		free(mensaje);
 		log_debug(logger, "No hay recursos (%c) para otorgarle al personaje (%s)", caja->id, personaje->simbolo);
@@ -293,7 +306,7 @@ int darRecurso(char* recurso, Personaje* personaje, int* socketPersonaje) {
 	restarRecurso(itemsEnNivel, caja->id);
 	log_debug(logger, "Al personaje (%s) se le dio el recurso (%c) del que ahora quedan(%d)", personaje->simbolo, caja->id, caja->quantity);
 	pthread_mutex_unlock(&semaforoListaNiveles);
-	armarMensaje(mensaje,HAY_RECURSOS,sizeof(char),"0");
+	armarMensaje(mensaje, HAY_RECURSOS, sizeof(char), "0");
 	pthread_mutex_lock(&semaforoEstadoPersonajes);
 	queue_push(personaje->recursosObtenidos, string_substring_until(&caja->id, 1));
 	actualizarRecursosRecibidosAlPersonaje(personaje, recurso);

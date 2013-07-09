@@ -86,6 +86,7 @@ int socketNivel;
 #define FINALIZO_NIVELES 20 // Notifica que el personaje termino el plan de niveles
 #define MOVIMIENTO_EXITO 12 // MEnsaje del nivel por si el movimiento se dio con exito
 #define MUERTE_POR_DEADLOCK 13 // Mensaje por si muere por deadlock
+#define MUERTE_CORRECTA 19
 int main(int argc, char *argv[]) {
 
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
@@ -184,6 +185,10 @@ int esperarConfirmacionDelPlanificador(int socketPlanificador) {
 	recibirMensaje(socketPlanificador, mensaje);
 	if (mensaje->PayloadDescriptor == MOVIMIENTO_PERMITIDO) {
 		free(mensaje);
+		return 1;
+	} else if(mensaje->PayloadDescriptor == MUERTE_PERSONAJE) {
+		free(mensaje);
+		log_debug(logger,"El personaje (%s) fue sacado del planificador con exito", personaje->simbolo);
 		return 1;
 	}
 	free(mensaje);
@@ -358,9 +363,9 @@ void esperarDesbloqueo(int socketOrquestador) {
 int perderVida(bool porDeadlock) {
 	if (sacarVida(personaje) > 0) {
 		if (porDeadlock) {
-			log_debug(logger, "El personaje %s perdio una vida, causa:DEADLOCK", personaje->nombre);
+			log_debug(logger, "El personaje %s perdio una vida, ahora le quedan (%d), causa:DEADLOCK", personaje->nombre, personaje->vidas);
 		} else {
-			log_debug(logger, "El personaje %s perdio una vida, causa:SIGTERM", personaje->nombre);
+			log_debug(logger, "El personaje %s perdio una vida, ahora le quedan (%d) causa:SIGTERM", personaje->nombre, personaje->vidas);
 		}
 
 		if (!porDeadlock) {
@@ -377,6 +382,12 @@ int perderVida(bool porDeadlock) {
 			enviarMensaje(socketNivel, mensajeAEnviar);
 			free(mensajeAEnviar);
 		}
+		MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
+		recibirMensaje(socketNivel, mensajeARecibir);
+		if (mensajeARecibir->PayloadDescriptor != MUERTE_CORRECTA) {
+			return EXIT_FAILURE;
+		}
+		free(mensajeARecibir);
 		close(socketPlanificador);
 		close(socketNivel);
 		int resultado = procesar();
