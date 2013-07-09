@@ -379,6 +379,7 @@ int perderVida(bool porDeadlock) {
 			mensajeAEnviar->PayloadDescriptor = MUERTE_POR_DEADLOCK;
 			mensajeAEnviar->PayLoadLength = sizeof(char);
 			mensajeAEnviar->Payload = personaje->simbolo;
+			log_debug(logger, "Notifico muerte por deadlock al nivel. Personaje:%s", personaje->nombre);
 			enviarMensaje(socketNivel, mensajeAEnviar);
 			free(mensajeAEnviar);
 		}

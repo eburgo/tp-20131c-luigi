@@ -393,7 +393,9 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 			personajeLiberado = queue_pop(colaPersonajesLiberados);
 			log_debug(logger, "El personaje (%c) fue liberado porque se le otorgo el recurso (%c).", personajeLiberado->simboloPersonaje, personajeLiberado->recursoAAsignar);
 			char* recursoEliminado = eliminarUnRecursoAsignado(recursosALiberar, personajeLiberado->recursoAAsignar);
+			pthread_mutex_lock(&semaforoEstadoPersonajes);
 			asignarRecursoAlPersonajeDeEstadoDePersonajes(personajeLiberado->simboloPersonaje, recursoEliminado);
+			pthread_mutex_unlock(&semaforoEstadoPersonajes);
 		}
 	}
 	actualizarRecursos(recursosALiberar);

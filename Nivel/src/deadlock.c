@@ -56,11 +56,11 @@ void simularEntregas(t_list *procesosPersonajes) {
 	MPS_MSG *mensaje = malloc(sizeof(MPS_MSG));
 	mensaje->PayloadDescriptor = CHEQUEO_INTERBLOQUEO;
 	void mostrarEstado(Personaje *pj) {
-		log_debug(logger, "el pj(%s) tiene (%d)", pj->simbolo, list_size(pj->itemsAsignados));
+		log_debug(logger, "HILO DE INTERBLOQUEOS:el pj(%s) tiene (%d) recursos asignados.", pj->simbolo, list_size(pj->itemsAsignados));
 		if (list_size(pj->itemsAsignados) > 0) {
-			log_debug(logger, "el pj(%s) esta en deadlock", pj->simbolo);
+			log_debug(logger, "HILO DE INTERBLOQUEOS:el pj(%s) esta en deadlock.", pj->simbolo);
 		} else {
-			log_debug(logger, "el pj(%s) esta en starvation", pj->simbolo);
+			log_debug(logger, "HILO DE INTERBLOQUEOS:el pj(%s) esta en starvation.", pj->simbolo);
 		}
 	}
 	bool estaPersonajeEnDeadlock(Personaje *pj) {

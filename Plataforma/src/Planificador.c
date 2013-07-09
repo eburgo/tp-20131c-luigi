@@ -166,7 +166,6 @@ int manejarPersonajes(Planificador *planificador) {
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
-			imprimirListas(planificador, log);
 			sem_post(planificador->sem);
 			break;
 		default:
