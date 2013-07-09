@@ -112,9 +112,9 @@ void manejarConexion(int* socket) {
 		}
 		t_stream *stream = nivelConexion_serializer(nivel);
 		armarMensaje(&mensaje,PJ_PIDE_NIVEL,stream->length,stream->data);
-		log_error(loggerOrquestador, "Socket (%d) - Enviando mensaje con info del nivel solicitado", *socket);
+		log_info(loggerOrquestador, "Socket (%d) - Enviando mensaje con info del nivel solicitado", *socket);
 		enviarMensaje(*socket, &mensaje);
-		log_error(loggerOrquestador, "Socket (%d) - Info enviada con exito", *socket);
+		log_info(loggerOrquestador, "Socket (%d) - Info enviada con exito", *socket);
 		free(nivel);
 		break;
 	case FINALIZO_NIVELES:
