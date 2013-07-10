@@ -114,23 +114,23 @@ int main(int argc, char **argv) {
 	nivel_gui_dibujar(itemsEnNivel);
 	log_debug(logger, "El GUI del Nivel (%s) levantada correctamente, limites X:(%d) Y:(%d)", nivel->nombre, limiteMapa->x, limiteMapa->y);
 
-	log_debug(logger, "Levantando el servidor del Nivel:%s", nivel->nombre);
+	log_debug(logger, "Levantando el servidor del (%s)", nivel->nombre);
 	socketEscucha = malloc(sizeof(int));
 	miPuerto = realizarConexion(socketEscucha);
-	log_debug(logger, "Servidor del nivel %s se levanto con exito en el puerto:%d", nivel->nombre, miPuerto);
+	log_debug(logger, "Servidor del nivel (%s) se levanto con exito en el puerto (%d)", nivel->nombre, miPuerto);
 
 	log_destroy(logger);
 	char nombreOrigen[16] = "NIVEL - ";
 	char* nombreLog = strcat(nombreOrigen, nivel->nombre);
 	logger = log_create("/home/utnso/nivel.log", nombreLog, false, LOG_LEVEL_TRACE);
 
-	log_debug(logger, "Conectando al %s con el Orquestador, IpNivel: %s PuertoNivel: %d", nivel->nombre, nivel->ip, miPuerto);
+	log_debug(logger, "Conectando al (%s) con el Orquestador IP: (%s)", nivel->nombre, nivel->ip, miPuerto);
 	socketOrquestador = conectarConOrquestador(miPuerto);
 	if (socketOrquestador == 1) {
-		log_error(logger, "Error al conectar al orquestador IpNivel: %s PuertoNivel: %d", nivel->ip, miPuerto);
+		log_error(logger, "Error al conectar al orquestador con IP: (%s)", nivel->ip, miPuerto);
 		return EXIT_FAILURE;
 	}
-	log_debug(logger, "El nivel %s se conecto al Orquestador con exito.", nivel->nombre);
+	log_debug(logger, "El nivel (%s) se conecto al Orquestador con exito.", nivel->nombre);
 
 	pthread_t hiloOrquestador;
 	pthread_t hiloPersonajes;
@@ -188,8 +188,7 @@ int comunicarPersonajes(int *socketEscucha) {
 			return EXIT_FAILURE;
 
 		}
-		log_info(logger, "Se acepto una conexion correctamente.");
-		log_info(logger, "se crea un hilo para manejar la conexion.Y se los almacena en una cola de hilos");
+		log_info(logger, "Un personaje se conecto al nivel, se crea un hilo para manejarlo");
 
 		pthread_create(thread, NULL, (void*) interactuarConPersonaje, socketConPersonaje);
 		queue_push(colaHilos, thread);
@@ -207,8 +206,8 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 	MPS_MSG mensajeInicializar;
 
 	recibirMensaje(*socketConPersonaje, &mensajeInicializar);
-	log_debug(logger, "Se recibio mensaje de inicializacion.");
 
+	log_debug(logger, "Se recibio mensaje de inicializacion.");
 	Personaje*personaje = inicializarPersonaje(mensajeInicializar.Payload);
 	log_debug(logger, "Personaje inicializado correctamente. Se procede a avisarle al personaje (%s) que puede recorrer el nivel. ", personaje->simbolo);
 	enviarMensaje(*socketConPersonaje, &mensajeInicializar);
@@ -401,7 +400,7 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	actualizarRecursos(recursosALiberar);
 	sacarAlPersonajeDeEstadoDePersonajes(personaje);
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
-	log_debug(logger, "El personaje(%s) fue eliminado del nivel.", personaje->simbolo);
+	log_debug(logger, "Fueron liberados los recursos del personaje (%s) y ademas fue eliminado del nivel.", personaje->simbolo);
 	nivel_gui_dibujar(itemsEnNivel);
 }
 
@@ -426,13 +425,13 @@ void asignarRecursoAlPersonajeDeEstadoDePersonajes(char personajeSimbolo, char* 
 void actualizarRecursos(t_list* recAsignados) {
 	while (!list_is_empty(recAsignados)) {
 		char* recurso = list_remove(recAsignados, 0);
-		log_debug(logger, "Se va a liberar una instancia del recurso(%s).", recurso);
+		log_debug(logger, "Se va a liberar una instancia del recurso (%s).", recurso);
 		ITEM_NIVEL* caja = buscarCaja(recurso);
 		pthread_mutex_lock(&semaforoListaNiveles);
 		caja->quantity++;
 		sumarRecurso(itemsEnNivel, caja->id);
 		nivel_gui_dibujar(itemsEnNivel);
-		log_debug(logger, "La caja(%c) ahora tiene(%d) instancias", caja->id, caja->quantity);
+		log_debug(logger, "La caja (%c) ahora tiene (%d) instancias", caja->id, caja->quantity);
 		free(recurso);
 		pthread_mutex_unlock(&semaforoListaNiveles);
 	}
