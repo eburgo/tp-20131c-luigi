@@ -183,16 +183,19 @@ int consultarUbicacionCaja(char cajaABuscar, int socketNivel, Posicion* posicion
 int esperarConfirmacionDelPlanificador(int socketPlanificador) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	recibirMensaje(socketPlanificador, mensaje);
+	// En el caso de que le confirme el movimiento al personaje
 	if (mensaje->PayloadDescriptor == MOVIMIENTO_PERMITIDO) {
 		free(mensaje);
 		return 1;
-	} else if(mensaje->PayloadDescriptor == MUERTE_PERSONAJE) {
+	}
+	// En el caso de que le confirme la muerte correcta.
+	else if (mensaje->PayloadDescriptor == MUERTE_PERSONAJE) {
 		free(mensaje);
-		log_debug(logger,"El personaje (%s) fue sacado del planificador con exito", personaje->simbolo);
+		log_debug(logger, "El personaje (%s) fue sacado del planificador con exito", personaje->simbolo);
 		return 1;
 	}
 	free(mensaje);
-	log_error(logger, "Se recibio un mensaje del planificador inesperado. Personaje (%s)", personaje->nombre);
+	log_error(logger, "Se recibio un mensaje del planificador inesperado. Descriptor: (%d). Personaje (%s)", mensaje->PayloadDescriptor, personaje->nombre);
 	exit(EXIT_FAILURE);
 }
 void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socketNivel) {
@@ -400,8 +403,15 @@ int perderVida(bool porDeadlock) {
 		log_debug(logger, "El personaje %s se quedo sin vidas", personaje->nombre);
 		log_debug(logger, "Liberando recursos. Personaje:%s", personaje->nombre);
 		liberarRecursos(socketNivel);
+		MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
+		recibirMensaje(socketNivel, mensajeARecibir);
+		if (mensajeARecibir->PayloadDescriptor != MUERTE_CORRECTA) {
+			return EXIT_FAILURE;
+		}
+		free(mensajeARecibir);
 		log_debug(logger, "Notificando muerte. Personaje:%s", personaje->nombre);
 		notificarMuerte(socketPlanificador);
+		esperarConfirmacionDelPlanificador(socketPlanificador);
 		close(socketPlanificador);
 		close(socketNivel);
 		int levantarConfig = levantarPersonaje(path);
