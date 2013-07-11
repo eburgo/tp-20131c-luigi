@@ -287,8 +287,10 @@ void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestado
 	posicionActual->y = 0;
 	notificarIngresoAlNivel(socketNivel);
 	esperarConfirmacion(socketNivel);
+	log_debug(logger, "Confirmacion del nivel");
 	notificarIngresoAlNivel(socketPlanificador);
 	esperarConfirmacion(socketPlanificador);
+	log_debug(logger, "Confirmacion del Planificador");
 	int ubicacionCorrecta;
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)", personaje->nombre, nivel->nombre);
 	while (!queue_is_empty(objetosABuscar)) {
@@ -520,6 +522,7 @@ void liberarRecursos() {
 void esperarConfirmacion(int socket) {
 	MPS_MSG mensajeARecibir;
 	recibirMensaje(socket, &mensajeARecibir);
+	log_debug(logger, "Recibimos confirmacion (%d)", mensajeARecibir.PayloadDescriptor);
 }
 
 void notificarMuerte() {
@@ -579,6 +582,15 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, t_
 		} else {
 			recursoObtenido(socketPlanificador);
 		}
+	}
+	if (queue_is_empty(objetosABuscar)) {
+		log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
+		MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+		mensajeAEnviar->PayloadDescriptor = FINALIZAR;
+		mensajeAEnviar->PayLoadLength = sizeof(char);
+		mensajeAEnviar->Payload = "4";
+		enviarMensaje(socketPlanificador, mensajeAEnviar);
+		close(socketPlanificador);
 	}
 	return 0;
 }

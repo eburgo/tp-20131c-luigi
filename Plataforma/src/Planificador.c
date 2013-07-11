@@ -88,13 +88,58 @@ int recibirPersonajes(Planificador *planificador) {
 		FD_SET(*socketNuevaConexion, planificador->set);
 		pthread_mutex_unlock(&semaforo_listos);
 		imprimirListas(planificador, log);
+		log_debug(log, "Informamos al personaje (%s) que se inicializo correctamente. ", personaje->simbolo);
 		enviarMensaje(personaje->socket, mensaje);
 		sem_post(planificador->sem);
-		free(socketNuevaConexion);
+		//free(socketNuevaConexion);
 		free(mensaje);
 	}
 	log_destroy(log);
 	return 0;
+}
+void manejarMensaje(Personaje* personaje, Planificador *planificador, t_log	*log) {
+	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
+	recibirMensaje(personaje->socket, mensaje);
+	log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
+	while (personaje->quantum > 1 && mensaje->PayloadDescriptor == MOVIMIENTO_FINALIZADO) {
+		personaje->quantum--;
+		usleep(tiempoAccion);
+		log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
+		notificarMovimientoPermitido(personaje);
+		free(mensaje);
+		mensaje = malloc(sizeof(MPS_MSG));
+		recibirMensaje(personaje->socket, mensaje);
+		log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
+	}
+	switch (mensaje->PayloadDescriptor) {
+	case OBTUVO_RECURSO:
+		log_debug(log, "El personaje (%s) obtuvo un recurso, finaliza su quantum automaticamente.", personaje->simbolo);
+		queue_pop(planificador->listos);
+		personaje->quantum = quantumDefault;
+		queue_push(planificador->listos, personaje);
+		sem_post(planificador->sem);
+		break;
+	case FINALIZADO:
+		log_debug(log, "el personaje (%s) finalizo el nivel", personaje->simbolo);
+		sacarPersonajeFueraDeTurno(planificador, personaje, FALSE);
+		imprimirListas(planificador, log);
+		close(personaje->socket);
+		break;
+	case MUERTE_PERSONAJE:
+		log_debug(log, "El personaje (%s) murio. Lo sacamos del planificador.", personaje->simbolo);
+		sacarPersonajeFueraDeTurno(planificador, personaje, TRUE);
+		imprimirListas(planificador, log);
+		close(personaje->socket);
+		break;
+	default:
+		log_debug(log,"El personaje (%s) envio un mensaje no esperado, se cierra la conexion.",	personaje->simbolo);
+		sacarPersonajeFueraDeTurno(planificador, personaje, TRUE);
+		imprimirListas(planificador, log);
+		close(personaje->socket);
+		break;
+	}
+	free(mensaje);
+	usleep(tiempoAccion);
 }
 int manejarPersonajes(Planificador *planificador) {
 	MPS_MSG *mensaje;
@@ -105,22 +150,23 @@ int manejarPersonajes(Planificador *planificador) {
 	char* nombreLog = strcat(nombreOrigen, planificador->nombreNivel);
 	t_log *log = log_create("/home/utnso/planificador.log", nombreLog, true, LOG_LEVEL_TRACE);
 	while (1) {
-
 		log_debug(log, "Esperando personajes");
 		sem_wait(planificador->sem);
+		readSet = *planificador->set;
+		struct timeval espera;
+		espera.tv_sec = 0;
+		espera.tv_usec = 0;
+		select(200, &readSet, NULL, NULL, &espera);
+		for (i = 0; i < list_size(planificador->personajes); i++) {
+			Personaje *personajeAux = list_get(planificador->personajes, i);
+			if(FD_ISSET(personajeAux->socket, &readSet)) {
+				manejarMensaje(personajeAux,planificador,log);
+			}
+		}
 		Personaje *personaje = queue_peek(planificador->listos);
 		imprimirListas(planificador, log);
 		log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 		notificarMovimientoPermitido(personaje);
-		readSet = *planificador->set;
-		select(200, &readSet, NULL, NULL, NULL );
-		for (i = 0; i < list_size(planificador->personajes); i++) {
-			Personaje *personajeAux = list_get(planificador->personajes, i);
-			if (personaje->socket == personajeAux->socket) {
-				break;
-			} else if (FD_ISSET(personajeAux->socket, &readSet)) {
-			}
-		}
 		mensaje = malloc(sizeof(MPS_MSG));
 		recibirMensaje(personaje->socket, mensaje);
 		log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
@@ -210,7 +256,24 @@ void sacarPersonaje(Planificador *planificador, Personaje *personaje, int leResp
 	Personaje *pj = NULL;
 	pj = list_remove_by_condition(planificador->bloqueados, (void*) esElPersonaje);
 	if (!pj) {
-		pj = queue_pop(planificador->listos);
+		pj = list_remove_by_condition(planificador->listos->elements, (void*) esElPersonaje);
+	}
+	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
+	FD_CLR(pj->socket, planificador->set);
+	if (leRespondoAlPersonaje) {
+		notificarMuerte(pj);
+	}
+	free(pj);
+}
+void sacarPersonajeFueraDeTurno(Planificador *planificador, Personaje *personaje, int leRespondoAlPersonaje) {
+	int esElPersonaje(Personaje *pj) {
+		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
+	}
+	Personaje *pj = NULL;
+	pj = list_remove_by_condition(planificador->bloqueados, (void*) esElPersonaje);
+	if (!pj) {
+		pj = list_remove_by_condition(planificador->listos->elements, (void*) esElPersonaje);
+		sem_wait(planificador->sem);
 	}
 	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
 	FD_CLR(pj->socket, planificador->set);
