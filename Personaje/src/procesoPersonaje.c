@@ -335,7 +335,7 @@ void copiarCola(t_queue *cola1, t_queue *cola2) {
 	int size = queue_size(cola1);
 	for (i = 0; i < size; i++) {
 		objeto = queue_pop(cola1);
-		objetocopia = malloc(sizeof(char) + 1);
+		objetocopia = malloc(sizeof(char));
 		strcpy(objetocopia, objeto);
 		queue_push(cola2, objetocopia);
 		queue_push(cola1, objeto);

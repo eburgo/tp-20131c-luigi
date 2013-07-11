@@ -30,8 +30,6 @@ Personaje* inicializarPersonaje(char* simbolo);
 int administrarPeticionDeCaja(MPS_MSG* mensajeARecibir, int* socketConPersonaje);
 //Se comunicara con el personaje.
 int interactuarConPersonaje(int* socketNuevaConexion);
-//En caso de que se ingrese un recurso qe no existe.
-int informarError(int* socketConPersonaje);
 //Realiza el movimiento del Personaje
 int realizarMovimiento(Posicion* posicion, Personaje* personaje);
 //busca una caja en la lista de cajas del nivel
@@ -269,15 +267,6 @@ int interactuarConPersonaje(int* socketConPersonaje) {
 
 	close(*socketConPersonaje);
 	free(personaje);
-	return 0;
-}
-
-int informarError(int* socketConPersonaje) {
-	MPS_MSG respuestaError;
-	respuestaError.PayloadDescriptor = ERROR_MENSAJE;
-	respuestaError.PayLoadLength = strlen("payloadDescriptor incorrecto.") + 1;
-	respuestaError.Payload = "payloadDescriptor incorrecto.";
-	enviarMensaje(*socketConPersonaje, &respuestaError);
 	return 0;
 }
 
