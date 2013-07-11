@@ -19,7 +19,6 @@ int main() {
 	pthread_t thread;
 	pthread_create(&thread,NULL,(void*)iniciarOrquestador,NULL);
 	pthread_join(thread,NULL);
-	//llamarKoopa(); proximamente
 	return EXIT_SUCCESS;
 }
 

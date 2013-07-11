@@ -8,8 +8,7 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include commons/collections/subdir.mk
--include commons/subdir.mk
+-include src/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -24,22 +23,26 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: libso-commons-library.so
+all: Personaje
+
+dependents:
+	-cd /home/utnso/git/tp-20131c-luigi/commons/Debug && $(MAKE) all
 
 # Tool invocations
-libso-commons-library.so: $(OBJS) $(USER_OBJS)
+Personaje: $(OBJS) $(USER_OBJS) /home/utnso/git/tp-20131c-luigi/commons/Debug/libso-commons-library.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -shared -o "libso-commons-library.so" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/git/tp-20131c-luigi/commons/Debug" -o "Personaje" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(LIBRARIES) libso-commons-library.so
+	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) Personaje
 	-@echo ' '
 
 .PHONY: all clean dependents
 .SECONDARY:
+/home/utnso/git/tp-20131c-luigi/commons/Debug/libso-commons-library.so:
 
 -include ../makefile.targets

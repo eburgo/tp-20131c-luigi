@@ -48,7 +48,7 @@ int iniciarOrquestador() {
 	socketEscucha = iniciarServidor(PUERTO);
 	log_debug(loggerOrquestador, "Servidor escuchando en el puerto (%d)", PUERTO);
 	log_debug(loggerOrquestador, "Se levanta la configuracion de los planificadores.");
-	levantarConfiguracion("/home/utnso/git/tp-20131c-luigi/Plataforma/Planificador.config", &quantumDefault, &tiempoAccion);
+	levantarConfiguracion("../Planificador.config", &quantumDefault, &tiempoAccion);
 	log_debug(loggerOrquestador, "Quantum seteado a(%d), tiempoAccion seteado a(%d)", quantumDefault, tiempoAccion);
 	pthread_create(&threadInotify, NULL, (void*) inotify, NULL );
 	while (1) {
@@ -365,8 +365,8 @@ char * ipDelSocket(int socket) {
 }
 
 void llamarKoopa() {
-	char *prog[] = { "koopa", "/home/utnso/Escritorio/koopa/koopa.txt", NULL };
-	execv("/home/utnso/Escritorio/koopa/koopa", prog);
+	char *prog[] = { "koopa", "../koopa/koopa.txt", NULL };
+	execv("../koopa/koopa", prog);
 }
 
 t_stream* colaPersonajesLiberados_serializer(t_queue* colaPersonajesLiberados) {
