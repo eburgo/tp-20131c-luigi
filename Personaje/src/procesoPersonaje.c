@@ -88,7 +88,7 @@ int socketNivel;
 #define MUERTE_POR_DEADLOCK 13 // Mensaje por si muere por deadlock
 #define MUERTE_CORRECTA 19
 int main(int argc, char *argv[]) {
-	signal(SIGUSR1,(void*)manejarSenial);
+	signal(SIGUSR1, (void*) manejarSenial);
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
 	log_info(logger, "Log creado con exito, se procede a loguear el proceso Personaje");
 
@@ -400,18 +400,32 @@ int perderVida(bool porDeadlock) {
 		}
 		finalizar();
 	} else {
-		log_debug(logger, "El personaje %s se quedo sin vidas", personaje->nombre);
-		log_debug(logger, "Liberando recursos. Personaje:%s", personaje->nombre);
-		liberarRecursos(socketNivel);
+		if (porDeadlock) {
+			log_debug(logger, "El personaje %s se quedo sin vidas, causa:DEADLOCK", personaje->nombre, personaje->vidas);
+		} else {
+			log_debug(logger, "El personaje %s se quedo sin vidas, causa:SIGTERM", personaje->nombre, personaje->vidas);
+		}
+		if (!porDeadlock) {
+			log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
+			notificarMuerte(socketPlanificador);
+			esperarConfirmacionDelPlanificador(socketPlanificador);
+			log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
+			liberarRecursos(socketNivel);
+		} else if (porDeadlock) {
+			MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+			mensajeAEnviar->PayloadDescriptor = MUERTE_POR_DEADLOCK;
+			mensajeAEnviar->PayLoadLength = sizeof(char);
+			mensajeAEnviar->Payload = personaje->simbolo;
+			log_debug(logger, "Notifico muerte por deadlock al nivel. Personaje:%s", personaje->nombre);
+			enviarMensaje(socketNivel, mensajeAEnviar);
+			free(mensajeAEnviar);
+		}
 		MPS_MSG* mensajeARecibir = malloc(sizeof(MPS_MSG));
 		recibirMensaje(socketNivel, mensajeARecibir);
 		if (mensajeARecibir->PayloadDescriptor != MUERTE_CORRECTA) {
 			return EXIT_FAILURE;
 		}
 		free(mensajeARecibir);
-		log_debug(logger, "Notificando muerte. Personaje:%s", personaje->nombre);
-		notificarMuerte(socketPlanificador);
-		esperarConfirmacionDelPlanificador(socketPlanificador);
 		close(socketPlanificador);
 		close(socketNivel);
 		int levantarConfig = levantarPersonaje(path);
