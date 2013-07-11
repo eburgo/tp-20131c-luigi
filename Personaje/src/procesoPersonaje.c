@@ -88,7 +88,7 @@ int socketNivel;
 #define MUERTE_POR_DEADLOCK 13 // Mensaje por si muere por deadlock
 #define MUERTE_CORRECTA 19
 int main(int argc, char *argv[]) {
-
+	signal(SIGUSR1,(void*)manejarSenial);
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
 	log_info(logger, "Log creado con exito, se procede a loguear el proceso Personaje");
 
@@ -131,9 +131,9 @@ void enviarSeniales() {
 		perror("sigaction");
 	}
 
-	if (sigaction(SIGUSR1, &act, NULL ) == -1) {
-		perror("sigaction");
-	}
+	//if (sigaction(SIGUSR1, &act, NULL ) == -1) {
+	//	perror("sigaction");
+	//}
 
 }
 
@@ -194,8 +194,8 @@ int esperarConfirmacionDelPlanificador(int socketPlanificador) {
 		log_debug(logger, "El personaje (%s) fue sacado del planificador con exito", personaje->simbolo);
 		return 1;
 	}
-	free(mensaje);
 	log_error(logger, "Se recibio un mensaje del planificador inesperado. Descriptor: (%d). Personaje (%s)", mensaje->PayloadDescriptor, personaje->nombre);
+	free(mensaje);
 	exit(EXIT_FAILURE);
 }
 void realizarMovimiento(Posicion* posicionActual, Posicion* posicion, int socketNivel) {
@@ -372,11 +372,11 @@ int perderVida(bool porDeadlock) {
 		}
 
 		if (!porDeadlock) {
-			log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
-			liberarRecursos(socketNivel);
 			log_debug(logger, "Notificando muerte al planificador. Personaje:%s", personaje->nombre);
 			notificarMuerte(socketPlanificador);
 			esperarConfirmacionDelPlanificador(socketPlanificador);
+			log_debug(logger, "Notifico la liberacion de recursos. Personaje:%s", personaje->nombre);
+			liberarRecursos(socketNivel);
 		} else if (porDeadlock) {
 			MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 			mensajeAEnviar->PayloadDescriptor = MUERTE_POR_DEADLOCK;
