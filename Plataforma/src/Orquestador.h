@@ -39,7 +39,7 @@ int registrarNivel(NivelDatos *nivelDatos, int socket) ;
 //devuelve -1 si no esta el nivel, -2 si no esta el planificador o 0 si se encontro.
 int prepararNivelConexion(char* nombre, NivelConexion *nivelConexion);
 //levanta la configuracion de los planificadores donde se inicializa quantum y tiempo de accion.
-void levantarConfiguracion(char* path,int *quantum,unsigned long *tiempoAccion);
+char* levantarConfiguracion(char* path,int *quantum,unsigned long *tiempoAccion);
 //Se queda escuchando mensajes del nivel
 void esperarMensajesDeNivel(char* nombreNivel, int socket);
 //busca el primero de la lista de personajes del planificador que corresponde
