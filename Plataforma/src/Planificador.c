@@ -66,7 +66,7 @@ int recibirPersonajes(Planificador *planificador) {
 		}
 		mensaje = malloc(sizeof(MPS_MSG));
 		recibirMensaje(*socketNuevaConexion, mensaje);
-		if(mensaje->PayloadDescriptor != INGRESA_NIVEL) {
+		if (mensaje->PayloadDescriptor != INGRESA_NIVEL) {
 			log_error(log, "El personaje que acaba de entrar envio un mensaje con descriptor incorrecto: (%d)", mensaje->PayloadDescriptor);
 		}
 
@@ -97,7 +97,7 @@ int recibirPersonajes(Planificador *planificador) {
 	log_destroy(log);
 	return 0;
 }
-void manejarMensaje(Personaje* personaje, Planificador *planificador, t_log	*log) {
+void manejarMensaje(Personaje* personaje, Planificador *planificador, t_log *log) {
 	MPS_MSG* mensaje = malloc(sizeof(MPS_MSG));
 	recibirMensaje(personaje->socket, mensaje);
 	log_debug(log, "Mensaje recibido de (%s) es el descriptor (%d)", personaje->simbolo, mensaje->PayloadDescriptor);
@@ -132,7 +132,9 @@ void manejarMensaje(Personaje* personaje, Planificador *planificador, t_log	*log
 		close(personaje->socket);
 		break;
 	default:
-		log_debug(log,"El personaje (%s) envio un mensaje no esperado, se cierra la conexion.",	personaje->simbolo);
+		log_debug(log, "El personaje (%s) envio un mensaje no esperado, se cierra la conexion.", personaje->simbolo);
+		int indice = buscarSimboloPersonaje(personajes, personaje->simbolo);
+		list_remove_and_destroy_element(personajes, indice, free);
 		sacarPersonajeFueraDeTurno(planificador, personaje, TRUE);
 		imprimirListas(planificador, log);
 		close(personaje->socket);
@@ -159,8 +161,8 @@ int manejarPersonajes(Planificador *planificador) {
 		select(200, &readSet, NULL, NULL, &espera);
 		for (i = 0; i < list_size(planificador->personajes); i++) {
 			Personaje *personajeAux = list_get(planificador->personajes, i);
-			if(FD_ISSET(personajeAux->socket, &readSet)) {
-				manejarMensaje(personajeAux,planificador,log);
+			if (FD_ISSET(personajeAux->socket, &readSet)) {
+				manejarMensaje(personajeAux, planificador, log);
 			}
 		}
 		Personaje *personaje = queue_peek(planificador->listos);
@@ -216,6 +218,8 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		default:
 			log_debug(log, "El personaje (%s) envio un mensaje no esperado, se cierra la conexion.", personaje->simbolo);
+			int indice = buscarSimboloPersonaje(personajes, personaje->simbolo);
+			list_remove_and_destroy_element(personajes, indice, free);
 			sacarPersonaje(planificador, personaje, FALSE);
 			imprimirListas(planificador, log);
 			close(personaje->socket);
@@ -271,10 +275,12 @@ void sacarPersonajeFueraDeTurno(Planificador *planificador, Personaje *personaje
 	}
 	Personaje *pj = NULL;
 	pj = list_remove_by_condition(planificador->bloqueados, (void*) esElPersonaje);
+	pthread_mutex_lock(&semaforo_listos);
 	if (!pj) {
 		pj = list_remove_by_condition(planificador->listos->elements, (void*) esElPersonaje);
 		sem_wait(planificador->sem);
 	}
+	pthread_mutex_unlock(&semaforo_listos);
 	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
 	FD_CLR(pj->socket, planificador->set);
 	if (leRespondoAlPersonaje) {
@@ -304,6 +310,7 @@ int buscarSimboloPersonaje(t_list *self, char* nombrePersonaje) {
 		return -1;
 }
 void imprimirListas(Planificador *planificador, t_log *log) {
+	pthread_mutex_lock(&semaforo_listos);
 	char* listosLog = imprimirLista("Listos:", planificador->listos->elements, log, 1);
 	char* bloqueadosLog = imprimirLista("Bloqueados:", planificador->bloqueados, log, 0);
 	if (!queue_is_empty(planificador->listos)) {
@@ -311,8 +318,9 @@ void imprimirListas(Planificador *planificador, t_log *log) {
 	} else {
 		log_debug(log, "%s / % s", listosLog, bloqueadosLog);
 	}
-
+	pthread_mutex_unlock(&semaforo_listos);
 }
+
 char* imprimirLista(char* header, t_list* lista, t_log *log, int indice) {
 	char *listaLog = string_new();
 	string_append(&listaLog, header);
