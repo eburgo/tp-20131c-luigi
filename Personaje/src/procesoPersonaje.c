@@ -320,6 +320,15 @@ void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestado
 				movimientoRealizado(socketPlanificador);
 			}
 		}
+		if (queue_is_empty(objetosABuscar)) {
+			log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
+			MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
+			mensajeAEnviar->PayloadDescriptor = FINALIZAR;
+			mensajeAEnviar->PayLoadLength = sizeof(char);
+			mensajeAEnviar->Payload = "4";
+			enviarMensaje(socketPlanificador, mensajeAEnviar);
+			close(socketPlanificador);
+		}
 	}
 	nivelTerminado(socketNivel);
 	close(socketNivel);
@@ -571,27 +580,11 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, t_
 		log_debug(logger, "El personaje (%s) fue desbloqueado, se continua con el nivel.", personaje->nombre);
 	} else {
 		log_debug(logger, "El personaje: (%s) recibio el recurso(%s) con exito!", personaje->nombre, cajaABuscar);
-		if (queue_is_empty(objetosABuscar)) {
-			log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
-			MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
-			mensajeAEnviar->PayloadDescriptor = FINALIZAR;
-			mensajeAEnviar->PayLoadLength = sizeof(char);
-			mensajeAEnviar->Payload = "4";
-			enviarMensaje(socketPlanificador, mensajeAEnviar);
-			close(socketPlanificador);
-		} else {
+		if (!queue_is_empty(objetosABuscar)) {
 			recursoObtenido(socketPlanificador);
 		}
 	}
-	if (queue_is_empty(objetosABuscar)) {
-		log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
-		MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
-		mensajeAEnviar->PayloadDescriptor = FINALIZAR;
-		mensajeAEnviar->PayLoadLength = sizeof(char);
-		mensajeAEnviar->Payload = "4";
-		enviarMensaje(socketPlanificador, mensajeAEnviar);
-		close(socketPlanificador);
-	}
+
 	return 0;
 }
 
