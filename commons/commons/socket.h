@@ -18,6 +18,12 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <net/if.h>
+
 #include "collections/list.h"
 #include "collections/queue.h"
 typedef int socket_t;
@@ -78,6 +84,7 @@ t_stream* pjsEnDeadlock_serializer(t_list *pjsEnDeadlock);
 t_list* pjsEnDeadlock_desserializer(t_stream *stream);
 t_stream* NivelRecursosLiberados_serializer(t_list *self);
 void armarMensaje(MPS_MSG* mensaje,int descriptor,int payloadLength,void* payload);
+char* obtenerIpLocal();
 
 // Inicia el servidor y devuelve el puerto asignado aleatoreamente.
 int realizarConexion(int* socketEscucha);

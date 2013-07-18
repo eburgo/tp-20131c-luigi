@@ -151,7 +151,8 @@ int conectarConOrquestador(int miPuerto) {
 	MPS_MSG mensajeARecibir;
 	int socketOrquestador;
 	NivelDatos* nivelDatos = malloc(sizeof(NivelDatos));
-	nivelDatos->ip = nivel->ip;
+	char* ipNivel = obtenerIpLocal();
+	nivelDatos->ip = ipNivel;
 	nivelDatos->nombre = nivel->nombre;
 	nivelDatos->puerto = miPuerto;
 	t_stream* stream = NivelDatos_serializer(nivelDatos);

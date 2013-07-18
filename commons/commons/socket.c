@@ -308,3 +308,18 @@ void armarMensaje(MPS_MSG* mensaje,int descriptor,int payloadLength,void* payloa
 	mensaje->PayLoadLength = payloadLength;
 	mensaje->Payload = payload;
 }
+
+char* obtenerIpLocal()
+{
+    int fd;
+    struct ifreq ifr;
+    char iface[] = "eth4";
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    ifr.ifr_addr.sa_family = AF_INET;
+    strncpy(ifr.ifr_name , iface , IFNAMSIZ-1);
+    ioctl(fd, SIOCGIFADDR, &ifr);
+
+    close(fd);
+    return inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+}
