@@ -313,7 +313,7 @@ char* obtenerIpLocal()
 {
     int fd;
     struct ifreq ifr;
-    char iface[] = "eth4";
+    char iface[] = "eth0";
 
     fd = socket(AF_INET, SOCK_DGRAM, 0);
     ifr.ifr_addr.sa_family = AF_INET;
