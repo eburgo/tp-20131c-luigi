@@ -25,7 +25,6 @@ t_dictionary *niveles;
 t_log* loggerOrquestador;
 t_list* personajes;
 int quantumDefault = 2;
-char* ipPlani;
 unsigned long tiempoAccion = 2;
 //Tipos de mensajes a enviar
 #define DESBLOQUEAR 5
@@ -49,7 +48,7 @@ int iniciarOrquestador() {
 	socketEscucha = iniciarServidor(PUERTO);
 	log_debug(loggerOrquestador, "Servidor escuchando en el puerto (%d)", PUERTO);
 	log_debug(loggerOrquestador, "Se levanta la configuracion de los planificadores.");
-	ipPlani = levantarConfiguracion("../Planificador.config", &quantumDefault, &tiempoAccion);
+	levantarConfiguracion("../Planificador.config", &quantumDefault, &tiempoAccion);
 	log_debug(loggerOrquestador, "Quantum seteado a(%d), tiempoAccion seteado a(%d)", quantumDefault, tiempoAccion);
 	pthread_create(&threadInotify, NULL, (void*) inotify, NULL );
 	while (1) {
@@ -196,7 +195,7 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	planificador->nombreNivel = nombreNivel;
 	planificador->puerto = realizarConexion(socketEscucha);
 	planificador->socketEscucha = *socketEscucha;
-	planificador->ip = ipPlani;
+	planificador->ip = obtenerIpLocal();
 	planificador->bloqueados = list_create();
 	planificador->personajes = list_create();
 	planificador->listos = queue_create();
@@ -208,12 +207,11 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	return 0;
 }
 
-char* levantarConfiguracion(char* path, int *quantum, unsigned long *tiempoAccion) {
+void levantarConfiguracion(char* path, int *quantum, unsigned long *tiempoAccion) {
 	t_config *config = config_create(path);
 	char** spliteo = string_split(config_get_string_value(config, "tiempoAccion"),".");
 	*tiempoAccion=atoi(spliteo[0])*1000000+atoi(spliteo[1])*100000;
 	*quantum = atoi(config_get_string_value(config, "quantum"));
-	return config_get_string_value(config, "ip");
 	config_destroy(config);
 }
 
