@@ -33,10 +33,6 @@ char* imprimirLista(char* header, t_list* lista, t_log *log, int desde);
 extern int quantumDefault;
 extern unsigned long tiempoAccion;
 extern t_log* loggerOrquestador;
-
-sem_t sem_test;
-pthread_mutex_t semaforo_listos = PTHREAD_MUTEX_INITIALIZER;
-
 extern t_list *personajes;
 
 int iniciarPlanificador(Planificador* planificador) {
@@ -82,11 +78,14 @@ int recibirPersonajes(Planificador *planificador) {
 		personaje->socket = *socketNuevaConexion;
 
 		log_debug(log, "El personaje (%s) entro al nivel y se encolara a la cola de listos", personaje->simbolo);
-		pthread_mutex_lock(&semaforo_listos);
+
+		pthread_mutex_lock(&planificador->semaforo_personajes);
 		list_add(planificador->personajes, personaje);
+		pthread_mutex_unlock(&planificador->semaforo_personajes);
+		pthread_mutex_lock(&planificador->semaforo_listos);
 		queue_push(planificador->listos, personaje);
+		pthread_mutex_unlock(&planificador->semaforo_listos);
 		FD_SET(*socketNuevaConexion, planificador->set);
-		pthread_mutex_unlock(&semaforo_listos);
 		imprimirListas(planificador, log);
 		log_debug(log, "Informamos al personaje (%s) que se inicializo correctamente. ", personaje->simbolo);
 		enviarMensaje(personaje->socket, mensaje);
@@ -114,9 +113,11 @@ void manejarMensaje(Personaje* personaje, Planificador *planificador, t_log *log
 	switch (mensaje->PayloadDescriptor) {
 	case OBTUVO_RECURSO:
 		log_debug(log, "El personaje (%s) obtuvo un recurso, finaliza su quantum automaticamente.", personaje->simbolo);
+		pthread_mutex_lock(&planificador->semaforo_listos);
 		queue_pop(planificador->listos);
 		personaje->quantum = quantumDefault;
 		queue_push(planificador->listos, personaje);
+		pthread_mutex_unlock(&planificador->semaforo_listos);
 		sem_post(planificador->sem);
 		break;
 	case FINALIZADO:
@@ -160,12 +161,16 @@ int manejarPersonajes(Planificador *planificador) {
 		espera.tv_usec = 0;
 		select(200, &readSet, NULL, NULL, &espera);
 		for (i = 0; i < list_size(planificador->personajes); i++) {
+			pthread_mutex_lock(&planificador->semaforo_personajes);
 			Personaje *personajeAux = list_get(planificador->personajes, i);
+			pthread_mutex_unlock(&planificador->semaforo_personajes);
 			if (FD_ISSET(personajeAux->socket, &readSet)) {
 				manejarMensaje(personajeAux, planificador, log);
 			}
 		}
+		pthread_mutex_lock(&planificador->semaforo_listos);
 		Personaje *personaje = queue_peek(planificador->listos);
+		pthread_mutex_unlock(&planificador->semaforo_listos);
 		imprimirListas(planificador, log);
 		log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
 		notificarMovimientoPermitido(personaje);
@@ -185,9 +190,13 @@ int manejarPersonajes(Planificador *planificador) {
 		switch (mensaje->PayloadDescriptor) {
 		case BLOQUEADO:
 			log_debug(log, "El personaje (%s) se bloqueo por el recurso (%s)", personaje->simbolo, (char*) mensaje->Payload);
+			pthread_mutex_lock(&planificador->semaforo_listos);
 			queue_pop(planificador->listos);
+			pthread_mutex_unlock(&planificador->semaforo_listos);
 			personaje->causaBloqueo = (char*) mensaje->Payload;
+			pthread_mutex_lock(&planificador->semaforo_bloqueados);
 			list_add(planificador->bloqueados, personaje);
+			pthread_mutex_unlock(&planificador->semaforo_bloqueados);
 			imprimirListas(planificador, log);
 			break;
 		case FINALIZADO:
@@ -198,9 +207,11 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case OBTUVO_RECURSO:
 			log_debug(log, "El personaje (%s) obtuvo un recurso, finaliza su quantum automaticamente.", personaje->simbolo);
+			pthread_mutex_lock(&planificador->semaforo_listos);
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
+			pthread_mutex_unlock(&planificador->semaforo_listos);
 			sem_post(planificador->sem);
 			break;
 		case MUERTE_PERSONAJE:
@@ -211,9 +222,11 @@ int manejarPersonajes(Planificador *planificador) {
 			break;
 		case MOVIMIENTO_FINALIZADO:
 			log_debug(log, "Al personaje (%s) se le termino el quantum", personaje->simbolo);
+			pthread_mutex_lock(&planificador->semaforo_listos);
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
+			pthread_mutex_unlock(&planificador->semaforo_listos);
 			sem_post(planificador->sem);
 			break;
 		default:
@@ -258,11 +271,17 @@ void sacarPersonaje(Planificador *planificador, Personaje *personaje, int leResp
 		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
 	}
 	Personaje *pj = NULL;
+	pthread_mutex_lock(&planificador->semaforo_bloqueados);
 	pj = list_remove_by_condition(planificador->bloqueados, (void*) esElPersonaje);
+	pthread_mutex_unlock(&planificador->semaforo_bloqueados);
 	if (!pj) {
+		pthread_mutex_lock(&planificador->semaforo_listos);
 		pj = list_remove_by_condition(planificador->listos->elements, (void*) esElPersonaje);
+		pthread_mutex_unlock(&planificador->semaforo_listos);
 	}
+	pthread_mutex_lock(&planificador->semaforo_personajes);
 	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
+	pthread_mutex_unlock(&planificador->semaforo_personajes);
 	FD_CLR(pj->socket, planificador->set);
 	if (leRespondoAlPersonaje) {
 		notificarMuerte(pj);
@@ -274,14 +293,18 @@ void sacarPersonajeFueraDeTurno(Planificador *planificador, Personaje *personaje
 		return string_equals_ignore_case(pj->simbolo, personaje->simbolo);
 	}
 	Personaje *pj = NULL;
+	pthread_mutex_lock(&planificador->semaforo_bloqueados);
 	pj = list_remove_by_condition(planificador->bloqueados, (void*) esElPersonaje);
-	pthread_mutex_lock(&semaforo_listos);
+	pthread_mutex_unlock(&planificador->semaforo_bloqueados);
+	pthread_mutex_lock(&planificador->semaforo_listos);
 	if (!pj) {
 		pj = list_remove_by_condition(planificador->listos->elements, (void*) esElPersonaje);
 		sem_wait(planificador->sem);
 	}
-	pthread_mutex_unlock(&semaforo_listos);
+	pthread_mutex_unlock(&planificador->semaforo_listos);
+	pthread_mutex_lock(&planificador->semaforo_personajes);
 	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
+	pthread_mutex_unlock(&planificador->semaforo_personajes);
 	FD_CLR(pj->socket, planificador->set);
 	if (leRespondoAlPersonaje) {
 		notificarMuerte(pj);
@@ -310,7 +333,6 @@ int buscarSimboloPersonaje(t_list *self, char* nombrePersonaje) {
 		return -1;
 }
 void imprimirListas(Planificador *planificador, t_log *log) {
-	pthread_mutex_lock(&semaforo_listos);
 	char* listosLog = imprimirLista("Listos:", planificador->listos->elements, log, 1);
 	char* bloqueadosLog = imprimirLista("Bloqueados:", planificador->bloqueados, log, 0);
 	if (!queue_is_empty(planificador->listos)) {
@@ -318,7 +340,6 @@ void imprimirListas(Planificador *planificador, t_log *log) {
 	} else {
 		log_debug(log, "%s / % s", listosLog, bloqueadosLog);
 	}
-	pthread_mutex_unlock(&semaforo_listos);
 }
 
 char* imprimirLista(char* header, t_list* lista, t_log *log, int indice) {

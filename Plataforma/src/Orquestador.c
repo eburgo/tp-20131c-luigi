@@ -191,6 +191,9 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	pthread_t* thread = malloc(sizeof(pthread_t));
 	Planificador *planificador = malloc(sizeof(Planificador));
 	fd_set* set = malloc(sizeof(fd_set));
+	pthread_mutex_t semaforoListos = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t semaforoBloqueados = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t semaforoPersonajes = PTHREAD_MUTEX_INITIALIZER;
 	FD_ZERO(set);
 	planificador->nombreNivel = nombreNivel;
 	planificador->puerto = realizarConexion(socketEscucha);
@@ -200,6 +203,9 @@ int iniciarUnPlanificador(char* nombreNivel) {
 	planificador->personajes = list_create();
 	planificador->listos = queue_create();
 	planificador->set = set;
+	planificador->semaforo_listos = semaforoListos;
+	planificador->semaforo_personajes = semaforoPersonajes;
+	planificador->semaforo_bloqueados = semaforoBloqueados;
 	pthread_mutex_lock(&semaforo_planificadores);
 	dictionary_put(planificadores, planificador->nombreNivel, planificador);
 	pthread_mutex_unlock(&semaforo_planificadores);
@@ -247,7 +253,9 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 				posicionPersonaje = buscarPersonajeQueEsteBloqueadoPor(planificadorNivel->bloqueados, unRecurso);
 				if (posicionPersonaje >= 0) {
 
+					pthread_mutex_lock(&planificadorNivel->semaforo_bloqueados);
 					personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje);
+					pthread_mutex_unlock(&planificadorNivel->semaforo_bloqueados);
 
 					PersonajeDesbloqueado* personajeDesbloqueado = malloc(sizeof(PersonajeDesbloqueado));
 					personajeDesbloqueado->simboloPersonaje = personajeADesbloquear->simbolo;
@@ -261,8 +269,12 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 
 					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la lista Listos", personajeADesbloquear->simbolo);
 					personajeADesbloquear->quantum = quantumDefault;
+					pthread_mutex_lock(&planificadorNivel->semaforo_listos);
 					queue_push(planificadorNivel->listos, personajeADesbloquear);
+					pthread_mutex_unlock(&planificadorNivel->semaforo_listos);
+					pthread_mutex_lock(&planificadorNivel->semaforo_bloqueados);
 					list_remove(planificadorNivel->bloqueados, posicionPersonaje);
+					pthread_mutex_unlock(&planificadorNivel->semaforo_bloqueados);
 					seDesbloqueoPersonaje = 1;
 				}
 			}

@@ -19,6 +19,9 @@ typedef struct {
 	t_queue *listos; //cola de listos
 	fd_set *set;
 	sem_t *sem;
+	pthread_mutex_t semaforo_listos;
+	pthread_mutex_t semaforo_bloqueados;
+	pthread_mutex_t semaforo_personajes;
 
 }__attribute__((__packed__)) Planificador;
 
