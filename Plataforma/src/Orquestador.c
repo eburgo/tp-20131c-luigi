@@ -30,6 +30,8 @@ unsigned long tiempoAccion = 2;
 #define DESBLOQUEAR 5
 #define RECURSOS_ASIGNADOS 10
 #define RECURSOS_NO_ASIGNADOS 11
+#define CONTINUA_NIVEL 30
+#define TERMINA_NIVEL 31
 // PROTOTIPOS
 void armarNivelConexion(NivelConexion *nivelConexion, Nivel *nivel, Planificador *planificador);
 
@@ -254,7 +256,9 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 				if (posicionPersonaje >= 0) {
 
 					pthread_mutex_lock(&planificadorNivel->semaforo_bloqueados);
+					log_debug(loggerOrquestador, "agarro semaforo bloqueados");
 					personajeADesbloquear = list_get(planificadorNivel->bloqueados, posicionPersonaje);
+					log_debug(loggerOrquestador, "libero semaforo bloqueados");
 					pthread_mutex_unlock(&planificadorNivel->semaforo_bloqueados);
 
 					PersonajeDesbloqueado* personajeDesbloqueado = malloc(sizeof(PersonajeDesbloqueado));
@@ -270,10 +274,14 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 					log_debug(loggerOrquestador, "Paso al personaje: (%s) de la listaBloqueados a la lista Listos", personajeADesbloquear->simbolo);
 					personajeADesbloquear->quantum = quantumDefault;
 					pthread_mutex_lock(&planificadorNivel->semaforo_listos);
+					log_debug(loggerOrquestador, "agarro semaforo listos");
 					queue_push(planificadorNivel->listos, personajeADesbloquear);
+					log_debug(loggerOrquestador, "libero semaforo listos");
 					pthread_mutex_unlock(&planificadorNivel->semaforo_listos);
 					pthread_mutex_lock(&planificadorNivel->semaforo_bloqueados);
+					log_debug(loggerOrquestador, "agarro semaforo bloqueados");
 					list_remove(planificadorNivel->bloqueados, posicionPersonaje);
+					log_debug(loggerOrquestador, "libero semaforo bloqueados");
 					pthread_mutex_unlock(&planificadorNivel->semaforo_bloqueados);
 					seDesbloqueoPersonaje = 1;
 				}
@@ -292,13 +300,39 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 				MPS_MSG mensajeDeDesbloqueo;
 				armarMensaje(&mensajeDeDesbloqueo,DESBLOQUEAR,sizeof(char),"0");
 				PersonajeDesbloqueado* personajeDesbloqueado;
-
+				MPS_MSG *msgARecibir;
 				while (!queue_is_empty(colaPersonajesADesbloquear)) {
-
+					msgARecibir = malloc(sizeof(MPS_MSG));
 					personajeDesbloqueado = queue_pop(colaPersonajesADesbloquear);
 					log_debug(loggerOrquestador, "Notifico al personaje: (%s) de su desbloqueo", personajeDesbloqueado->simboloPersonaje);
 					enviarMensaje(personajeDesbloqueado->socket, &mensajeDeDesbloqueo);
-					sem_post(planificadorNivel->sem);
+					recibirMensaje(personajeDesbloqueado->socket, msgARecibir);
+					int esElPersonaje(Personaje *pj) {
+						return string_equals_ignore_case(pj->simbolo, personajeDesbloqueado->simboloPersonaje);
+					}
+					switch(msgARecibir->PayloadDescriptor){
+					case CONTINUA_NIVEL:
+						log_debug(loggerOrquestador, "El personaje: (%s) continua con el nivel.", personajeDesbloqueado->simboloPersonaje);
+						sem_post(planificadorNivel->sem);
+						break;
+					case TERMINA_NIVEL:
+						log_debug(loggerOrquestador, "El personaje: (%s) termina el nivel.", personajeDesbloqueado->simboloPersonaje);
+						pthread_mutex_lock(&planificadorNivel->semaforo_listos);
+						list_remove_by_condition(planificadorNivel->listos->elements,(void*)esElPersonaje);
+						FD_CLR(personajeDesbloqueado->socket,planificadorNivel->set);
+						pthread_mutex_unlock(&planificadorNivel->semaforo_listos);
+						pthread_mutex_lock(&planificadorNivel->semaforo_listos);
+						Personaje*pj=list_remove_by_condition(planificadorNivel->personajes,(void*)esElPersonaje);
+						pthread_mutex_unlock(&planificadorNivel->semaforo_listos);
+						close(personajeDesbloqueado->socket);
+						free(pj);
+						break;
+					default:
+						close(personajeDesbloqueado->socket);
+						break;
+					}
+					free(msgARecibir);
+
 				}
 			}
 			break;
@@ -309,10 +343,11 @@ void esperarMensajesDeNivel(char *nombreNivel, int socket) {
 			stream->length = mensaje->PayLoadLength;
 			t_list *pjsEnDeadlock = pjsEnDeadlock_desserializer(stream);
 			Personaje *pjAMatar = (Personaje*) buscarPjAMatar(nombreNivel, pjsEnDeadlock);
-			armarMensaje(mensaje,CHEQUEO_INTERBLOQUEO,sizeof(char),pjAMatar->simbolo);
-			log_debug(loggerOrquestador, "Notificamos al Nivel (%s) que mataremos al personaje (%s)", nombreNivel, pjAMatar->simbolo);
-			enviarMensaje(socket, mensaje);
-			log_debug(loggerOrquestador, "Se notifico con exito al Nivel (%s) la muerte del personaje (%s)", nombreNivel, pjAMatar->simbolo);
+		//	armarMensaje(mensaje,CHEQUEO_INTERBLOQUEO,sizeof(char),pjAMatar->simbolo);
+			//log_debug(loggerOrquestador, "Notificamos al Nivel (%s) que mataremos al personaje (%s)", nombreNivel, pjAMatar->simbolo);
+			//enviarMensaje(socket, mensaje);
+			//log_debug(loggerOrquestador, "Se notifico con exito al Nivel (%s) la muerte del personaje (%s)", nombreNivel, pjAMatar->simbolo);
+			log_debug(loggerOrquestador, "Notificamos muerte por deadlock al personaje (%s)", pjAMatar->simbolo);
 			sacarPersonajeFueraDeTurno(dictionary_get(planificadores, nombreNivel), pjAMatar, TRUE);
 			free(stream);
 			break;

@@ -128,9 +128,9 @@ void simularEntregas(t_list *procesosPersonajes) {
 			mensaje->Payload = stream->data;
 			mensaje->PayLoadLength = stream->length;
 			enviarMensaje(socketOrquestador, mensaje);
-			recibirMensaje(socketOrquestador, mensaje);
-			char* pjSimbolo = mensaje->Payload;
-			log_debug(logger, "HILO DE INTERBLOQUEOS: El orquestador mato al pj (%s) a causa del deadlock", pjSimbolo);
+			//recibirMensaje(socketOrquestador, mensaje);
+			//char* pjSimbolo = mensaje->Payload;
+			//log_debug(logger, "HILO DE INTERBLOQUEOS: El orquestador mato al pj (%s) a causa del deadlock", pjSimbolo);
 		} else {
 			log_debug(logger, "HILO DE INTERBLOQUEOS: Recovery no activado");
 		}

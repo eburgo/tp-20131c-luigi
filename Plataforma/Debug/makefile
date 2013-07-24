@@ -26,7 +26,7 @@ endif
 all: Plataforma
 
 dependents:
-	-cd /home/utnso/git/tp-20131c-luigi/commons/Debug && $(MAKE) clean all
+	-cd /home/utnso/git/tp-20131c-luigi/commons/Debug && $(MAKE) all
 
 # Tool invocations
 Plataforma: $(OBJS) $(USER_OBJS) /home/utnso/git/tp-20131c-luigi/commons/Debug/libso-commons-library.so

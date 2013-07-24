@@ -59,6 +59,8 @@ ITEM_NIVEL *itemsEnNivel = NULL;
 Posicion* limiteMapa;
 pthread_mutex_t semaforoListaNiveles = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t semaforoEstadoPersonajes = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t semaforoLiberarRecursos = PTHREAD_MUTEX_INITIALIZER;
+
 int socketOrquestador;
 
 t_list *estadoDePersonajes;
@@ -359,6 +361,7 @@ Personaje* inicializarPersonaje(char* simbolo) {
 }
 
 void liberarRecursos(Personaje* personaje, int socketOrquestador) {
+	pthread_mutex_lock(&semaforoLiberarRecursos);
 	MPS_MSG mensajeARecibir;
 	t_list* recursosALiberar;
 	recursosALiberar = list_create();
@@ -392,6 +395,7 @@ void liberarRecursos(Personaje* personaje, int socketOrquestador) {
 	BorrarItem(&itemsEnNivel, *personaje->simbolo);
 	log_debug(logger, "Fueron liberados los recursos del personaje (%s) y ademas fue eliminado del nivel.", personaje->simbolo);
 	nivel_gui_dibujar(itemsEnNivel);
+	pthread_mutex_unlock(&semaforoLiberarRecursos);
 }
 
 char* eliminarUnRecursoAsignado(t_list* recursosLiberados, char recursoABorrar) {

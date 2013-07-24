@@ -34,7 +34,7 @@ extern int quantumDefault;
 extern unsigned long tiempoAccion;
 extern t_log* loggerOrquestador;
 extern t_list *personajes;
-
+int semValue;
 int iniciarPlanificador(Planificador* planificador) {
 	pthread_t threadRecibir, threadManejar;
 	planificador->sem = malloc(sizeof(sem_t));
@@ -80,12 +80,17 @@ int recibirPersonajes(Planificador *planificador) {
 		log_debug(log, "El personaje (%s) entro al nivel y se encolara a la cola de listos", personaje->simbolo);
 
 		pthread_mutex_lock(&planificador->semaforo_personajes);
+		log_debug(log, "Agarro semaforo personajes");
 		list_add(planificador->personajes, personaje);
+		log_debug(log, "libero semaforo personajes");
 		pthread_mutex_unlock(&planificador->semaforo_personajes);
 		pthread_mutex_lock(&planificador->semaforo_listos);
+		log_debug(log, "Agarro semaforo listos");
 		queue_push(planificador->listos, personaje);
-		pthread_mutex_unlock(&planificador->semaforo_listos);
 		FD_SET(*socketNuevaConexion, planificador->set);
+		log_debug(log, "libero semaforo listos");
+		pthread_mutex_unlock(&planificador->semaforo_listos);
+
 		imprimirListas(planificador, log);
 		log_debug(log, "Informamos al personaje (%s) que se inicializo correctamente. ", personaje->simbolo);
 		enviarMensaje(personaje->socket, mensaje);
@@ -114,9 +119,11 @@ void manejarMensaje(Personaje* personaje, Planificador *planificador, t_log *log
 	case OBTUVO_RECURSO:
 		log_debug(log, "El personaje (%s) obtuvo un recurso, finaliza su quantum automaticamente.", personaje->simbolo);
 		pthread_mutex_lock(&planificador->semaforo_listos);
+		log_debug(log, "Agarro semaforo listos");
 		queue_pop(planificador->listos);
 		personaje->quantum = quantumDefault;
 		queue_push(planificador->listos, personaje);
+		log_debug(log, "libero semaforo listos");
 		pthread_mutex_unlock(&planificador->semaforo_listos);
 		sem_post(planificador->sem);
 		break;
@@ -162,14 +169,21 @@ int manejarPersonajes(Planificador *planificador) {
 		select(200, &readSet, NULL, NULL, &espera);
 		for (i = 0; i < list_size(planificador->personajes); i++) {
 			pthread_mutex_lock(&planificador->semaforo_personajes);
+			log_debug(log, "agarre semaforo personajes");
 			Personaje *personajeAux = list_get(planificador->personajes, i);
+			log_debug(log, "libero semaforo personajes");
 			pthread_mutex_unlock(&planificador->semaforo_personajes);
-			if (FD_ISSET(personajeAux->socket, &readSet)) {
+			pthread_mutex_lock(&planificador->semaforo_listos);
+			Personaje *personajeListo = queue_peek(planificador->listos);
+			pthread_mutex_unlock(&planificador->semaforo_listos);
+			if (FD_ISSET(personajeAux->socket, &readSet) && !(personajeAux->socket == personajeListo->socket)) {
 				manejarMensaje(personajeAux, planificador, log);
 			}
 		}
 		pthread_mutex_lock(&planificador->semaforo_listos);
+		log_debug(log, "Agarro semaforo listos");
 		Personaje *personaje = queue_peek(planificador->listos);
+		log_debug(log, "libero semaforo listos");
 		pthread_mutex_unlock(&planificador->semaforo_listos);
 		imprimirListas(planificador, log);
 		log_debug(log, "Notificando movimiento permitido a (%s)", personaje->simbolo);
@@ -191,11 +205,15 @@ int manejarPersonajes(Planificador *planificador) {
 		case BLOQUEADO:
 			log_debug(log, "El personaje (%s) se bloqueo por el recurso (%s)", personaje->simbolo, (char*) mensaje->Payload);
 			pthread_mutex_lock(&planificador->semaforo_listos);
+			log_debug(log, "Agarro semaforo listos");
 			queue_pop(planificador->listos);
+			log_debug(log, "libero listos");
 			pthread_mutex_unlock(&planificador->semaforo_listos);
 			personaje->causaBloqueo = (char*) mensaje->Payload;
 			pthread_mutex_lock(&planificador->semaforo_bloqueados);
+			log_debug(log, "agarro semaforo bloqueados");
 			list_add(planificador->bloqueados, personaje);
+			log_debug(log, "libero semaforo bloqueados");
 			pthread_mutex_unlock(&planificador->semaforo_bloqueados);
 			imprimirListas(planificador, log);
 			break;
@@ -208,9 +226,11 @@ int manejarPersonajes(Planificador *planificador) {
 		case OBTUVO_RECURSO:
 			log_debug(log, "El personaje (%s) obtuvo un recurso, finaliza su quantum automaticamente.", personaje->simbolo);
 			pthread_mutex_lock(&planificador->semaforo_listos);
+			log_debug(log, "Agarro semaforo listos");
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
+			log_debug(log, "Agarro libero listos");
 			pthread_mutex_unlock(&planificador->semaforo_listos);
 			sem_post(planificador->sem);
 			break;
@@ -223,9 +243,11 @@ int manejarPersonajes(Planificador *planificador) {
 		case MOVIMIENTO_FINALIZADO:
 			log_debug(log, "Al personaje (%s) se le termino el quantum", personaje->simbolo);
 			pthread_mutex_lock(&planificador->semaforo_listos);
+			log_debug(log, "Agarro semaforo listos");
 			queue_pop(planificador->listos);
 			personaje->quantum = quantumDefault;
 			queue_push(planificador->listos, personaje);
+			log_debug(log, "libero semaforo listos");
 			pthread_mutex_unlock(&planificador->semaforo_listos);
 			sem_post(planificador->sem);
 			break;
@@ -272,15 +294,21 @@ void sacarPersonaje(Planificador *planificador, Personaje *personaje, int leResp
 	}
 	Personaje *pj = NULL;
 	pthread_mutex_lock(&planificador->semaforo_bloqueados);
+//	printf("Agarro semaforo bloqueados\n");
 	pj = list_remove_by_condition(planificador->bloqueados, (void*) esElPersonaje);
+//	printf("libero semaforo bloqueados\n");
 	pthread_mutex_unlock(&planificador->semaforo_bloqueados);
 	if (!pj) {
 		pthread_mutex_lock(&planificador->semaforo_listos);
+//		printf("Agarro semaforo listos\n");
 		pj = list_remove_by_condition(planificador->listos->elements, (void*) esElPersonaje);
+//		printf("libero semaforo listos\n");
 		pthread_mutex_unlock(&planificador->semaforo_listos);
 	}
 	pthread_mutex_lock(&planificador->semaforo_personajes);
+//	printf("Agarro semaforo personajes\n");
 	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
+//	printf("libero semaforo personajes\n");
 	pthread_mutex_unlock(&planificador->semaforo_personajes);
 	FD_CLR(pj->socket, planificador->set);
 	if (leRespondoAlPersonaje) {
@@ -294,16 +322,22 @@ void sacarPersonajeFueraDeTurno(Planificador *planificador, Personaje *personaje
 	}
 	Personaje *pj = NULL;
 	pthread_mutex_lock(&planificador->semaforo_bloqueados);
+//	printf("Agarro semaforo bloqueados\n");
 	pj = list_remove_by_condition(planificador->bloqueados, (void*) esElPersonaje);
+//	printf("libero semaforo bloqueados\n");
 	pthread_mutex_unlock(&planificador->semaforo_bloqueados);
 	pthread_mutex_lock(&planificador->semaforo_listos);
+//	printf("Agarro semaforo listos\n");
 	if (!pj) {
 		pj = list_remove_by_condition(planificador->listos->elements, (void*) esElPersonaje);
 		sem_wait(planificador->sem);
 	}
+//	printf("libero semaforo listos\n");
 	pthread_mutex_unlock(&planificador->semaforo_listos);
 	pthread_mutex_lock(&planificador->semaforo_personajes);
+//	printf("Agarro semaforo personajes\n");
 	pj = list_remove_by_condition(planificador->personajes, (void*) esElPersonaje);
+//	printf("libero semaforo personajes\n");
 	pthread_mutex_unlock(&planificador->semaforo_personajes);
 	FD_CLR(pj->socket, planificador->set);
 	if (leRespondoAlPersonaje) {
@@ -349,6 +383,5 @@ char* imprimirLista(char* header, t_list* lista, t_log *log, int indice) {
 		string_append(&listaLog, "-> ");
 		string_append(&listaLog, string_duplicate(((Personaje*) list_get(lista, indice))->simbolo));
 	}
-	string_append(&listaLog, ".");
 	return listaLog;
 }

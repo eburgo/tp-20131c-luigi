@@ -87,6 +87,8 @@ int socketNivel;
 #define MOVIMIENTO_EXITO 12 // MEnsaje del nivel por si el movimiento se dio con exito
 #define MUERTE_POR_DEADLOCK 13 // Mensaje por si muere por deadlock
 #define MUERTE_CORRECTA 19
+#define CONTINUA_NIVEL 30
+#define TERMINA_NIVEL 31
 int main(int argc, char *argv[]) {
 	signal(SIGUSR1, (void*) manejarSenial);
 	logger = log_create("/home/utnso/personaje.log", "PERSONAJE", true, LOG_LEVEL_TRACE);
@@ -268,7 +270,7 @@ void avisarDelBloqueo(int socketPlanificador, char* recursoPedido) {
 	free(mensajeAEnviar);
 }
 void nivelTerminado(int socket) {
-	log_debug(logger, "El personaje:(%s) procede a avisar el fin del nivel", personaje->nombre);
+	log_debug(logger, "El personaje:(%s) procede a avisar el fin del nivel al nivel", personaje->nombre);
 	MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 	mensajeAEnviar->PayloadDescriptor = FINALIZAR;
 	mensajeAEnviar->PayLoadLength = sizeof(char);
@@ -292,6 +294,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestado
 	esperarConfirmacion(socketPlanificador);
 	log_debug(logger, "Confirmacion del Planificador");
 	int ubicacionCorrecta;
+	int terminoPorDesbloqueo = false;
 	log_debug(logger, "El personaje:(%s) empieza a recorrer el nivel (%s)", personaje->nombre, nivel->nombre);
 	while (!queue_is_empty(objetosABuscar)) {
 		char *cajaABuscar;
@@ -303,7 +306,7 @@ void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestado
 		}
 		if (estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 			esperarConfirmacionDelPlanificador(socketPlanificador);
-			procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador, socketOrquestador);
+			terminoPorDesbloqueo = procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador, socketOrquestador);
 		}
 		while (!estaEnPosicionDeLaCaja(posicion, posicionActual) && ubicacionCorrecta) {
 
@@ -315,13 +318,13 @@ void recorrerNivel(int socketNivel, int socketPlanificador, int socketOrquestado
 			realizarMovimiento(posicionActual, posicion, socketNivel);
 			log_debug(logger, "El personaje:(%s) se movio satisfactoriamente", personaje->nombre);
 			if (estaEnPosicionDeLaCaja(posicion, posicionActual)) {
-				procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador, socketOrquestador);
+				terminoPorDesbloqueo = procesarPedidoDeRecurso(cajaABuscar, nivel, socketNivel, objetosABuscar, socketPlanificador, socketOrquestador);
 			} else {
 				movimientoRealizado(socketPlanificador);
 			}
 		}
-		if (queue_is_empty(objetosABuscar)) {
-			log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel.", personaje->nombre);
+		if (queue_is_empty(objetosABuscar) && !terminoPorDesbloqueo) {
+			log_debug(logger, "El personaje: (%s) procede a informar la finalizacion del nivel al planificador.", personaje->nombre);
 			MPS_MSG* mensajeAEnviar = malloc(sizeof(MPS_MSG));
 			mensajeAEnviar->PayloadDescriptor = FINALIZAR;
 			mensajeAEnviar->PayLoadLength = sizeof(char);
@@ -577,7 +580,20 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, t_
 		log_debug(logger, "El personaje:(%s) se bloqueo a causa de que el recurso (%s) no esta disponible", personaje->nombre, cajaABuscar);
 		avisarDelBloqueo(socketPlanificador, cajaABuscar);
 		esperarDesbloqueo(socketOrquestador);
-		log_debug(logger, "El personaje (%s) fue desbloqueado, se continua con el nivel.", personaje->nombre);
+		if (!queue_is_empty(objetosABuscar)) {
+			log_debug(logger, "El personaje (%s) fue desbloqueado y continua con el nivel.", personaje->nombre);
+			MPS_MSG msgAEnviar;
+			armarMensaje(&msgAEnviar,CONTINUA_NIVEL,1,"1");
+			enviarMensaje(socketPlanificador,&msgAEnviar);
+		}else{
+			log_debug(logger, "El personaje (%s) fue desbloqueado y termina el nivel.", personaje->nombre);
+			MPS_MSG msgAEnviar;
+			armarMensaje(&msgAEnviar,TERMINA_NIVEL,1,"1");
+			enviarMensaje(socketPlanificador,&msgAEnviar);
+			close(socketPlanificador);
+			return true;
+		}
+
 	} else {
 		log_debug(logger, "El personaje: (%s) recibio el recurso(%s) con exito!", personaje->nombre, cajaABuscar);
 		if (!queue_is_empty(objetosABuscar)) {
@@ -585,7 +601,7 @@ int procesarPedidoDeRecurso(char *cajaABuscar, Nivel *nivel, int socketNivel, t_
 		}
 	}
 
-	return 0;
+	return false;
 }
 
 void avisarFinalizacionDelPersonaje() {
